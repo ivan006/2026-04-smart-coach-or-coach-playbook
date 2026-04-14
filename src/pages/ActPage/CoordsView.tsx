@@ -2,19 +2,30 @@ import { useState, useEffect } from "react";
 import { Team, COLS, ROWS } from "./ActPage";
 
 function teamToText(team: Team, prefix: string): string {
-  return team.map((p) => `${prefix}${p.id}(${p.x},${p.y})`).join("\n");
+  return team
+    .map((p) => `${prefix}${p.id}(${p.x}/${COLS},${p.y}/${ROWS})`)
+    .join("\n");
+}
+
+function buildText(us: Team, them: Team): string {
+  return `# Us\n${teamToText(us, "U")}\n\n# Them\n${teamToText(them, "T")}`;
 }
 
 function parseTeamText(text: string, prefix: string): Team | null {
   const lines = text
     .trim()
     .split("\n")
-    .filter((l) => l.trim());
+    .filter((l) => l.trim() && !l.trim().startsWith("#"));
   const result: Team = [];
   for (const line of lines) {
     const m = line
       .trim()
-      .match(new RegExp(`${prefix}(\\d+)\\((\\d+),(\\d+)\\)`, "i"));
+      .match(
+        new RegExp(
+          `${prefix}(\\d+)\\((\\d+)(?:/${COLS})?,\\s*(\\d+)(?:/${ROWS})?\\)`,
+          "i",
+        ),
+      );
     if (!m) continue;
     const id = parseInt(m[1]),
       x = parseInt(m[2]),
@@ -38,59 +49,35 @@ export default function CoordsView({
   onUsChange,
   onThemChange,
 }: Props) {
-  const [usText, setUsText] = useState(() => teamToText(us, "U"));
-  const [themText, setThemText] = useState(() => teamToText(them, "T"));
+  const [text, setText] = useState(() => buildText(us, them));
 
   useEffect(() => {
-    setUsText(teamToText(us, "U"));
-  }, [us]);
-  useEffect(() => {
-    setThemText(teamToText(them, "T"));
-  }, [them]);
+    setText(buildText(us, them));
+  }, [us, them]);
 
-  const handleUs = (val: string) => {
-    setUsText(val);
-    const parsed = parseTeamText(val, "U");
-    if (parsed) onUsChange(parsed);
-  };
-
-  const handleThem = (val: string) => {
-    setThemText(val);
-    const parsed = parseTeamText(val, "T");
-    if (parsed) onThemChange(parsed);
+  const handleChange = (val: string) => {
+    setText(val);
+    const parsedUs = parseTeamText(val, "U");
+    const parsedThem = parseTeamText(val, "T");
+    if (parsedUs) onUsChange(parsedUs);
+    if (parsedThem) onThemChange(parsedThem);
   };
 
   return (
     <div>
-      <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
+      <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2">
         Coordinates
       </p>
-      <div className="grid grid-cols-2 gap-6">
-        <div>
-          <p className="text-xs text-muted-foreground mb-2">
-            Us — format: U1(x,y)
-          </p>
-          <textarea
-            value={usText}
-            onChange={(e) => handleUs(e.target.value)}
-            rows={11}
-            spellCheck={false}
-            className="w-full font-mono text-sm bg-background border border-border rounded-lg px-3 py-2 text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-border"
-          />
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground mb-2">
-            Them — format: T1(x,y)
-          </p>
-          <textarea
-            value={themText}
-            onChange={(e) => handleThem(e.target.value)}
-            rows={11}
-            spellCheck={false}
-            className="w-full font-mono text-sm bg-background border border-border rounded-lg px-3 py-2 text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-border"
-          />
-        </div>
-      </div>
+      <p className="text-xs text-muted-foreground mb-2">
+        Format: U1(x/{COLS},y/{ROWS})
+      </p>
+      <textarea
+        value={text}
+        onChange={(e) => handleChange(e.target.value)}
+        rows={26}
+        spellCheck={false}
+        className="w-full font-mono text-sm bg-background border border-border rounded-lg px-3 py-2 text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-border"
+      />
     </div>
   );
 }
