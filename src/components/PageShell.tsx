@@ -15,7 +15,9 @@ const PageShell = ({ icon, title, subtitle, children }: PageShellProps) => {
         {children}
         <div className="inline-flex items-center gap-2 bg-secondary px-5 py-3 rounded-lg border border-border">
           <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse" />
-          <span className="text-secondary-foreground font-medium text-sm">Work in progress</span>
+          <span className="text-secondary-foreground font-medium text-sm">
+            Work in progress
+          </span>
         </div>
       </div>
     </div>
