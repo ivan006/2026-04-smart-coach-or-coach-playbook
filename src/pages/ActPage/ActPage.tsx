@@ -101,6 +101,15 @@ export function mirrorFormation(team: Team): Team {
 export const defaultUs = (): Team => FORMATIONS["4-4-2"];
 export const defaultThem = (): Team => mirrorFormation(FORMATIONS["4-4-2"]);
 
+// For each x-line, push the outermost players (min/max y) one x forward
+function applyStagger(team: Team, direction: 1 | -1 = 1): Team {
+  return team.map((p) => {
+    if (p.y <= 3 || p.y >= 7)
+      return { ...p, x: Math.max(1, Math.min(COLS, p.x + direction)) };
+    return p;
+  });
+}
+
 function matchesFormation(team: Team, formation: Team): boolean {
   const sorted = (t: Team) =>
     [...t]
@@ -115,6 +124,7 @@ export default function ActPage() {
   const [them, setThem] = useState<Team>(defaultThem);
   const [showUs, setShowUs] = useState(true);
   const [showThem, setShowThem] = useState(true);
+  const [stagger, setStagger] = useState(false);
 
   const handleMove = (
     team: "us" | "them",
@@ -126,6 +136,9 @@ export default function ActPage() {
       setUs((prev) => prev.map((p) => (p.id === id ? { ...p, x, y } : p)));
     else setThem((prev) => prev.map((p) => (p.id === id ? { ...p, x, y } : p)));
   };
+
+  const displayUs = showUs ? (stagger ? applyStagger(us, 1) : us) : [];
+  const displayThem = showThem ? (stagger ? applyStagger(them, -1) : them) : [];
 
   return (
     <div className="ml-20 min-h-screen p-6 space-y-10">
@@ -148,6 +161,14 @@ export default function ActPage() {
             onChange={(e) => setShowThem(e.target.checked)}
           />
           Them
+        </label>
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+          <input
+            type="checkbox"
+            checked={stagger}
+            onChange={(e) => setStagger(e.target.checked)}
+          />
+          Stagger
         </label>
       </div>
       <div className="flex flex-col gap-2">
@@ -185,18 +206,14 @@ export default function ActPage() {
           })}
         </div>
       </div>
-      <DiagramView
-        us={showUs ? us : []}
-        them={showThem ? them : []}
-        onMove={handleMove}
-      />
+      <DiagramView us={displayUs} them={displayThem} onMove={handleMove} />
       <CoordsView
-        us={showUs ? us : []}
-        them={showThem ? them : []}
+        us={displayUs}
+        them={displayThem}
         onUsChange={setUs}
         onThemChange={setThem}
       />
-      <AsciiView us={showUs ? us : []} them={showThem ? them : []} />
+      <AsciiView us={displayUs} them={displayThem} />
     </div>
   );
 }
