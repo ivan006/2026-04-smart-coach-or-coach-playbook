@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 
 const COLS = 11;
-const ROWS = 7;
+const ROWS = 9;
 const EMPTY = ".";
 
 interface Player {
@@ -13,31 +13,31 @@ interface Player {
 type Team = Player[];
 
 const defaultUs = (): Team => [
-  { id: 1, x: 1, y: 4 },
+  { id: 1, x: 1, y: 5 },
   { id: 2, x: 3, y: 2 },
-  { id: 3, x: 3, y: 3 },
-  { id: 4, x: 3, y: 5 },
-  { id: 5, x: 3, y: 6 },
+  { id: 3, x: 3, y: 4 },
+  { id: 4, x: 3, y: 6 },
+  { id: 5, x: 3, y: 8 },
   { id: 6, x: 5, y: 2 },
-  { id: 7, x: 5, y: 4 },
-  { id: 8, x: 5, y: 6 },
+  { id: 7, x: 5, y: 5 },
+  { id: 8, x: 5, y: 8 },
   { id: 9, x: 7, y: 3 },
-  { id: 10, x: 7, y: 5 },
-  { id: 11, x: 9, y: 4 },
+  { id: 10, x: 7, y: 7 },
+  { id: 11, x: 9, y: 5 },
 ];
 
 const defaultThem = (): Team => [
-  { id: 1, x: 11, y: 4 },
+  { id: 1, x: 11, y: 5 },
   { id: 2, x: 9, y: 2 },
-  { id: 3, x: 9, y: 3 },
-  { id: 4, x: 9, y: 5 },
-  { id: 5, x: 9, y: 6 },
+  { id: 3, x: 9, y: 4 },
+  { id: 4, x: 9, y: 6 },
+  { id: 5, x: 9, y: 8 },
   { id: 6, x: 7, y: 2 },
-  { id: 7, x: 7, y: 4 },
-  { id: 8, x: 7, y: 6 },
+  { id: 7, x: 7, y: 5 },
+  { id: 8, x: 7, y: 8 },
   { id: 9, x: 5, y: 3 },
-  { id: 10, x: 5, y: 5 },
-  { id: 11, x: 3, y: 4 },
+  { id: 10, x: 5, y: 7 },
+  { id: 11, x: 3, y: 5 },
 ];
 
 function buildGrid(us: Team, them: Team): string[][] {
