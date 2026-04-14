@@ -1,8 +1,46 @@
-interface Props {
-  ascii: string;
+import { Team, COLS, ROWS } from "./ActPage";
+
+function buildAscii(us: Team, them: Team): string {
+  const template = [
+    "     |     ",
+    " +-+ | +-+ ",
+    " | | | | | ",
+    "++ | +++ | ++",
+    "|| | ||| | ||",
+    "++ | +++ | ++",
+    " | | | | | ",
+    " +-+ | +-+ ",
+    "     |     ",
+  ];
+  const rows = template.map((r) => r.split(""));
+  const place = (team: Team, char: string) => {
+    team.forEach((p) => {
+      const row = p.y - 1,
+        col = p.x - 1;
+      if (row >= 0 && row < ROWS && col >= 0 && col < COLS)
+        rows[row][col] = char;
+    });
+  };
+  place(us, "U");
+  place(them, "T");
+  const inflate = (row: string[]) =>
+    row
+      .map((c) => c + " ")
+      .join("")
+      .trimEnd();
+  const border = "+ - - - - - - - - - - +";
+  return [border, ...rows.map((r) => "| " + inflate(r) + " |"), border].join(
+    "\n",
+  );
 }
 
-export default function AsciiView({ ascii }: Props) {
+interface Props {
+  us: Team;
+  them: Team;
+}
+
+export default function AsciiView({ us, them }: Props) {
+  const ascii = buildAscii(us, them);
   return (
     <div>
       <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">

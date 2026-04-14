@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import DiagramView from "./DiagramView";
 import CoordsView from "./CoordsView";
 import AsciiView from "./AsciiView";
@@ -41,87 +41,10 @@ export const defaultThem = (): Team => [
   { id: 11, x: 3, y: 5 },
 ];
 
-export function teamToText(team: Team, prefix: string): string {
-  return team.map((p) => `${prefix}${p.id}(${p.x},${p.y})`).join("\n");
-}
-
-export function parseTeamText(text: string, prefix: string): Team | null {
-  const lines = text
-    .trim()
-    .split("\n")
-    .filter((l) => l.trim());
-  const result: Team = [];
-  for (const line of lines) {
-    const m = line
-      .trim()
-      .match(new RegExp(`${prefix}(\\d+)\\((\\d+),(\\d+)\\)`, "i"));
-    if (!m) continue;
-    const id = parseInt(m[1]),
-      x = parseInt(m[2]),
-      y = parseInt(m[3]);
-    if (id >= 1 && id <= 11 && x >= 1 && x <= COLS && y >= 1 && y <= ROWS)
-      result.push({ id, x, y });
-  }
-  return result.length > 0 ? result : null;
-}
-
-export function buildAscii(us: Team, them: Team): string {
-  const template = [
-    "           |           ",
-    "  + - +    |    + - +  ",
-    "  |   |    |    |   |  ",
-    "+ + + |  + + +  | + + +",
-    "| | | |  | | |  | | | |",
-    "+ + + |  + + +  | + + +",
-    "  |   |    |    |   |  ",
-    "  + - +    |    + - +  ",
-    "           |           ",
-  ];
-  const rows = template.map((r) => r.split(""));
-  const place = (team: Team, char: string) => {
-    team.forEach((p) => {
-      const row = p.y - 1,
-        col = (p.x - 1) * 2;
-      if (row >= 0 && row < 9 && col >= 0 && col < 23) rows[row][col] = char;
-    });
-  };
-  place(us, "U");
-  place(them, "T");
-  const border = "+ - - - - - - - - - - - +";
-  return [border, ...rows.map((r) => "| " + r.join("") + " |"), border].join(
-    "\n",
-  );
-}
-
 export default function ActPage() {
   const [us, setUs] = useState<Team>(defaultUs);
   const [them, setThem] = useState<Team>(defaultThem);
-  const [usText, setUsText] = useState(() => teamToText(defaultUs(), "U"));
-  const [themText, setThemText] = useState(() =>
-    teamToText(defaultThem(), "T"),
-  );
   const [showThem, setShowThem] = useState(true);
-
-  const ascii = buildAscii(us, showThem ? them : []);
-
-  useEffect(() => {
-    setUsText(teamToText(us, "U"));
-  }, [us]);
-  useEffect(() => {
-    setThemText(teamToText(them, "T"));
-  }, [them]);
-
-  const handleUsText = (val: string) => {
-    setUsText(val);
-    const parsed = parseTeamText(val, "U");
-    if (parsed) setUs(parsed);
-  };
-
-  const handleThemText = (val: string) => {
-    setThemText(val);
-    const parsed = parseTeamText(val, "T");
-    if (parsed) setThem(parsed);
-  };
 
   const handleMove = (
     team: "us" | "them",
@@ -156,12 +79,12 @@ export default function ActPage() {
         onMove={handleMove}
       />
       <CoordsView
-        usText={usText}
-        themText={themText}
-        onUsChange={handleUsText}
-        onThemChange={handleThemText}
+        us={us}
+        them={them}
+        onUsChange={setUs}
+        onThemChange={setThem}
       />
-      <AsciiView ascii={ascii} />
+      <AsciiView us={us} them={showThem ? them : []} />
     </div>
   );
 }
