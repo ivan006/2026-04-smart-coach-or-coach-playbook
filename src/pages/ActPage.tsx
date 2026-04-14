@@ -63,8 +63,6 @@ function buildAscii(grid: string[][]): string {
   return [top, ...rows, top].join("\n");
 }
 
-type View = "coords" | "ascii" | "diagram";
-
 const CELL_W = 60;
 const CELL_H = 52;
 const PAD = 32;
@@ -72,7 +70,6 @@ const PAD = 32;
 export default function ActPage() {
   const [us, setUs] = useState<Team>(defaultUs);
   const [them, setThem] = useState<Team>(defaultThem);
-  const [view, setView] = useState<View>("diagram");
   const [showThem, setShowThem] = useState(true);
   const dragRef = useRef<{
     team: "us" | "them";
@@ -147,18 +144,7 @@ export default function ActPage() {
         <span className="text-xs uppercase tracking-widest text-muted-foreground">
           Tactical Board
         </span>
-        <div className="flex border border-border rounded-lg overflow-hidden ml-auto text-xs">
-          {(["diagram", "coords", "ascii"] as View[]).map((v) => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              className={`px-3 py-1.5 capitalize ${view === v ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent"}`}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
-        <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer ml-auto">
           <input
             type="checkbox"
             checked={showThem}
@@ -168,97 +154,129 @@ export default function ActPage() {
         </label>
       </div>
 
-      {view === "diagram" && (
-        <div className="overflow-auto">
-          <svg
-            ref={svgRef}
-            width={svgW}
-            height={svgH}
-            onMouseMove={onMouseMove}
-            onMouseUp={onMouseUp}
-            onMouseLeave={onMouseUp}
-            style={{ cursor: "default", userSelect: "none" }}
-          >
-            <rect
-              x={PAD}
-              y={PAD}
-              width={COLS * CELL_W}
-              height={ROWS * CELL_H}
-              fill="#2d5a1b"
-              rx={4}
-            />
-            {Array.from({ length: ROWS + 1 }, (_, i) => (
-              <line
-                key={`h${i}`}
-                x1={PAD}
-                y1={PAD + i * CELL_H}
-                x2={PAD + COLS * CELL_W}
-                y2={PAD + i * CELL_H}
-                stroke="rgba(255,255,255,0.15)"
-                strokeWidth={0.5}
-              />
-            ))}
-            {Array.from({ length: COLS + 1 }, (_, i) => (
-              <line
-                key={`v${i}`}
-                x1={PAD + i * CELL_W}
-                y1={PAD}
-                x2={PAD + i * CELL_W}
-                y2={PAD + ROWS * CELL_H}
-                stroke="rgba(255,255,255,0.15)"
-                strokeWidth={0.5}
-              />
-            ))}
+      <div className="overflow-auto mb-8">
+        <svg
+          ref={svgRef}
+          width={svgW}
+          height={svgH}
+          onMouseMove={onMouseMove}
+          onMouseUp={onMouseUp}
+          onMouseLeave={onMouseUp}
+          style={{ cursor: "default", userSelect: "none" }}
+        >
+          <rect
+            x={PAD}
+            y={PAD}
+            width={COLS * CELL_W}
+            height={ROWS * CELL_H}
+            fill="#2d5a1b"
+            rx={4}
+          />
+          {Array.from({ length: ROWS + 1 }, (_, i) => (
             <line
-              x1={PAD + (COLS / 2) * CELL_W}
+              key={`h${i}`}
+              x1={PAD}
+              y1={PAD + i * CELL_H}
+              x2={PAD + COLS * CELL_W}
+              y2={PAD + i * CELL_H}
+              stroke="rgba(255,255,255,0.15)"
+              strokeWidth={0.5}
+            />
+          ))}
+          {Array.from({ length: COLS + 1 }, (_, i) => (
+            <line
+              key={`v${i}`}
+              x1={PAD + i * CELL_W}
               y1={PAD}
-              x2={PAD + (COLS / 2) * CELL_W}
+              x2={PAD + i * CELL_W}
               y2={PAD + ROWS * CELL_H}
-              stroke="rgba(255,255,255,0.3)"
-              strokeWidth={1}
+              stroke="rgba(255,255,255,0.15)"
+              strokeWidth={0.5}
             />
-            <ellipse
-              cx={PAD + (COLS / 2) * CELL_W}
-              cy={PAD + (ROWS / 2) * CELL_H}
-              rx={CELL_W * 1.5}
-              ry={CELL_H * 1.2}
-              fill="none"
-              stroke="rgba(255,255,255,0.3)"
-              strokeWidth={1}
-            />
-            <rect
-              x={PAD}
-              y={PAD + CELL_H * 2}
-              width={CELL_W * 1.5}
-              height={CELL_H * 3}
-              fill="none"
-              stroke="rgba(255,255,255,0.3)"
-              strokeWidth={1}
-            />
-            <rect
-              x={PAD + COLS * CELL_W - CELL_W * 1.5}
-              y={PAD + CELL_H * 2}
-              width={CELL_W * 1.5}
-              height={CELL_H * 3}
-              fill="none"
-              stroke="rgba(255,255,255,0.3)"
-              strokeWidth={1}
-            />
+          ))}
+          <line
+            x1={PAD + (COLS / 2) * CELL_W}
+            y1={PAD}
+            x2={PAD + (COLS / 2) * CELL_W}
+            y2={PAD + ROWS * CELL_H}
+            stroke="rgba(255,255,255,0.3)"
+            strokeWidth={1}
+          />
+          <ellipse
+            cx={PAD + (COLS / 2) * CELL_W}
+            cy={PAD + (ROWS / 2) * CELL_H}
+            rx={CELL_W * 1.5}
+            ry={CELL_H * 1.2}
+            fill="none"
+            stroke="rgba(255,255,255,0.3)"
+            strokeWidth={1}
+          />
+          <rect
+            x={PAD}
+            y={PAD + CELL_H * 2}
+            width={CELL_W * 1.5}
+            height={CELL_H * 3}
+            fill="none"
+            stroke="rgba(255,255,255,0.3)"
+            strokeWidth={1}
+          />
+          <rect
+            x={PAD + COLS * CELL_W - CELL_W * 1.5}
+            y={PAD + CELL_H * 2}
+            width={CELL_W * 1.5}
+            height={CELL_H * 3}
+            fill="none"
+            stroke="rgba(255,255,255,0.3)"
+            strokeWidth={1}
+          />
 
-            {us.map((p) => {
+          {us.map((p) => {
+            const cx = PAD + (p.x - 1) * CELL_W + CELL_W / 2;
+            const cy = PAD + (p.y - 1) * CELL_H + CELL_H / 2;
+            return (
+              <g
+                key={p.id}
+                onMouseDown={(e) => onMouseDown("us", p.id, e)}
+                style={{ cursor: "grab" }}
+              >
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={18}
+                  fill="#3b82f6"
+                  stroke="white"
+                  strokeWidth={1.5}
+                />
+                <text
+                  x={cx}
+                  y={cy}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fill="white"
+                  fontSize={12}
+                  fontWeight={600}
+                >
+                  {p.id}
+                </text>
+              </g>
+            );
+          })}
+
+          {showThem &&
+            them.map((p) => {
               const cx = PAD + (p.x - 1) * CELL_W + CELL_W / 2;
               const cy = PAD + (p.y - 1) * CELL_H + CELL_H / 2;
               return (
                 <g
                   key={p.id}
-                  onMouseDown={(e) => onMouseDown("us", p.id, e)}
+                  onMouseDown={(e) => onMouseDown("them", p.id, e)}
                   style={{ cursor: "grab" }}
                 >
                   <circle
                     cx={cx}
                     cy={cy}
                     r={18}
-                    fill="#3b82f6"
+                    fill="#ef4444"
                     stroke="white"
                     strokeWidth={1.5}
                   />
@@ -276,170 +294,125 @@ export default function ActPage() {
                 </g>
               );
             })}
+        </svg>
+      </div>
 
-            {showThem &&
-              them.map((p) => {
-                const cx = PAD + (p.x - 1) * CELL_W + CELL_W / 2;
-                const cy = PAD + (p.y - 1) * CELL_H + CELL_H / 2;
-                return (
-                  <g
-                    key={p.id}
-                    onMouseDown={(e) => onMouseDown("them", p.id, e)}
-                    style={{ cursor: "grab" }}
-                  >
-                    <circle
-                      cx={cx}
-                      cy={cy}
-                      r={18}
-                      fill="#ef4444"
-                      stroke="white"
-                      strokeWidth={1.5}
-                    />
-                    <text
-                      x={cx}
-                      y={cy}
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                      fill="white"
-                      fontSize={12}
-                      fontWeight={600}
-                    >
-                      {p.id}
-                    </text>
-                  </g>
-                );
-              })}
-          </svg>
-        </div>
-      )}
-
-      {view === "coords" && (
-        <div className="grid grid-cols-2 gap-8">
-          <div>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
-              Us
-            </p>
-            <div className="space-y-2">
-              {us.map((p) => (
-                <div key={p.id} className="flex items-center gap-3">
-                  <span className="w-6 text-xs text-muted-foreground text-right">
-                    {p.id}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <label className="text-xs text-muted-foreground">x</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={COLS}
-                      value={p.x}
-                      onChange={(e) =>
-                        updateUs(
-                          p.id,
-                          "x",
-                          Math.max(1, Math.min(COLS, Number(e.target.value))),
-                        )
-                      }
-                      className="w-14 bg-background border border-border rounded px-2 py-1 text-sm text-foreground"
-                    />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <label className="text-xs text-muted-foreground">y</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={ROWS}
-                      value={p.y}
-                      onChange={(e) =>
-                        updateUs(
-                          p.id,
-                          "y",
-                          Math.max(1, Math.min(ROWS, Number(e.target.value))),
-                        )
-                      }
-                      className="w-14 bg-background border border-border rounded px-2 py-1 text-sm text-foreground"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div>
-            <div className="flex items-center gap-3 mb-3">
-              <p className="text-xs uppercase tracking-widest text-muted-foreground">
-                Them
-              </p>
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer ml-auto">
-                <input
-                  type="checkbox"
-                  checked={showThem}
-                  onChange={(e) => setShowThem(e.target.checked)}
-                />
-                Show
-              </label>
-            </div>
-            <div className="space-y-2">
-              {them.map((p) => (
-                <div key={p.id} className="flex items-center gap-3">
-                  <span className="w-6 text-xs text-muted-foreground text-right">
-                    {p.id}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <label className="text-xs text-muted-foreground">x</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={COLS}
-                      value={p.x}
-                      onChange={(e) =>
-                        updateThem(
-                          p.id,
-                          "x",
-                          Math.max(1, Math.min(COLS, Number(e.target.value))),
-                        )
-                      }
-                      className="w-14 bg-background border border-border rounded px-2 py-1 text-sm text-foreground"
-                    />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <label className="text-xs text-muted-foreground">y</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={ROWS}
-                      value={p.y}
-                      onChange={(e) =>
-                        updateThem(
-                          p.id,
-                          "y",
-                          Math.max(1, Math.min(ROWS, Number(e.target.value))),
-                        )
-                      }
-                      className="w-14 bg-background border border-border rounded px-2 py-1 text-sm text-foreground"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {view === "ascii" && (
+      <div className="grid grid-cols-2 gap-8 mb-8">
         <div>
-          <p className="text-xs text-muted-foreground mb-3">
-            Read-only · copy and share on WhatsApp
+          <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
+            Us
           </p>
-          <pre className="font-mono text-sm bg-card border border-border rounded-xl p-4 leading-6 select-all">
-            {ascii}
-          </pre>
-          <button
-            onClick={() => navigator.clipboard.writeText(ascii)}
-            className="mt-3 text-xs border border-border rounded px-3 py-1.5 hover:bg-accent text-muted-foreground"
-          >
-            Copy to clipboard
-          </button>
+          <div className="space-y-2">
+            {us.map((p) => (
+              <div key={p.id} className="flex items-center gap-3">
+                <span className="w-6 text-xs text-muted-foreground text-right">
+                  {p.id}
+                </span>
+                <div className="flex items-center gap-1">
+                  <label className="text-xs text-muted-foreground">x</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={COLS}
+                    value={p.x}
+                    onChange={(e) =>
+                      updateUs(
+                        p.id,
+                        "x",
+                        Math.max(1, Math.min(COLS, Number(e.target.value))),
+                      )
+                    }
+                    className="w-14 bg-background border border-border rounded px-2 py-1 text-sm text-foreground"
+                  />
+                </div>
+                <div className="flex items-center gap-1">
+                  <label className="text-xs text-muted-foreground">y</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={ROWS}
+                    value={p.y}
+                    onChange={(e) =>
+                      updateUs(
+                        p.id,
+                        "y",
+                        Math.max(1, Math.min(ROWS, Number(e.target.value))),
+                      )
+                    }
+                    className="w-14 bg-background border border-border rounded px-2 py-1 text-sm text-foreground"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      )}
+        <div>
+          <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
+            Them
+          </p>
+          <div className="space-y-2">
+            {them.map((p) => (
+              <div key={p.id} className="flex items-center gap-3">
+                <span className="w-6 text-xs text-muted-foreground text-right">
+                  {p.id}
+                </span>
+                <div className="flex items-center gap-1">
+                  <label className="text-xs text-muted-foreground">x</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={COLS}
+                    value={p.x}
+                    onChange={(e) =>
+                      updateThem(
+                        p.id,
+                        "x",
+                        Math.max(1, Math.min(COLS, Number(e.target.value))),
+                      )
+                    }
+                    className="w-14 bg-background border border-border rounded px-2 py-1 text-sm text-foreground"
+                  />
+                </div>
+                <div className="flex items-center gap-1">
+                  <label className="text-xs text-muted-foreground">y</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={ROWS}
+                    value={p.y}
+                    onChange={(e) =>
+                      updateThem(
+                        p.id,
+                        "y",
+                        Math.max(1, Math.min(ROWS, Number(e.target.value))),
+                      )
+                    }
+                    className="w-14 bg-background border border-border rounded px-2 py-1 text-sm text-foreground"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
+          ASCII
+        </p>
+        <p className="text-xs text-muted-foreground mb-2">
+          Read-only · copy and share on WhatsApp
+        </p>
+        <pre className="font-mono text-sm bg-card border border-border rounded-xl p-4 leading-6 select-all">
+          {ascii}
+        </pre>
+        <button
+          onClick={() => navigator.clipboard.writeText(ascii)}
+          className="mt-3 text-xs border border-border rounded px-3 py-1.5 hover:bg-accent text-muted-foreground"
+        >
+          Copy to clipboard
+        </button>
+      </div>
     </div>
   );
 }
