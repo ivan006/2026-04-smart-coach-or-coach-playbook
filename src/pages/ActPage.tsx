@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 const COLS = 11;
 const ROWS = 9;
@@ -40,6 +40,31 @@ const defaultThem = (): Team => [
   { id: 11, x: 3, y: 5 },
 ];
 
+function teamToText(team: Team, prefix: string): string {
+  return team.map((p) => `${prefix}${p.id}(${p.x},${p.y})`).join("\n");
+}
+
+function parseTeamText(text: string, prefix: string): Team | null {
+  const lines = text
+    .trim()
+    .split("\n")
+    .filter((l) => l.trim());
+  const result: Team = [];
+  for (const line of lines) {
+    const m = line
+      .trim()
+      .match(new RegExp(`${prefix}(\\d+)\\((\\d+),(\\d+)\\)`, "i"));
+    if (!m) continue;
+    const id = parseInt(m[1]),
+      x = parseInt(m[2]),
+      y = parseInt(m[3]);
+    if (id >= 1 && id <= 11 && x >= 1 && x <= COLS && y >= 1 && y <= ROWS) {
+      result.push({ id, x, y });
+    }
+  }
+  return result.length > 0 ? result : null;
+}
+
 function buildGrid(us: Team, them: Team): string[][] {
   const grid: string[][] = Array.from({ length: ROWS }, () =>
     Array(COLS).fill(EMPTY),
@@ -70,6 +95,10 @@ const PAD = 32;
 export default function ActPage() {
   const [us, setUs] = useState<Team>(defaultUs);
   const [them, setThem] = useState<Team>(defaultThem);
+  const [usText, setUsText] = useState(() => teamToText(defaultUs(), "U"));
+  const [themText, setThemText] = useState(() =>
+    teamToText(defaultThem(), "T"),
+  );
   const [showThem, setShowThem] = useState(true);
   const dragRef = useRef<{
     team: "us" | "them";
@@ -82,20 +111,25 @@ export default function ActPage() {
   const grid = buildGrid(us, them);
   const ascii = buildAscii(grid);
 
-  const updateUs = useCallback((id: number, field: "x" | "y", val: number) => {
-    setUs((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, [field]: val } : p)),
-    );
-  }, []);
+  // sync team -> textarea when drag updates positions
+  useEffect(() => {
+    setUsText(teamToText(us, "U"));
+  }, [us]);
+  useEffect(() => {
+    setThemText(teamToText(them, "T"));
+  }, [them]);
 
-  const updateThem = useCallback(
-    (id: number, field: "x" | "y", val: number) => {
-      setThem((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, [field]: val } : p)),
-      );
-    },
-    [],
-  );
+  const handleUsText = (val: string) => {
+    setUsText(val);
+    const parsed = parseTeamText(val, "U");
+    if (parsed) setUs(parsed);
+  };
+
+  const handleThemText = (val: string) => {
+    setThemText(val);
+    const parsed = parseTeamText(val, "T");
+    if (parsed) setThem(parsed);
+  };
 
   const onMouseDown = (
     team: "us" | "them",
@@ -127,8 +161,9 @@ export default function ActPage() {
     const x = Math.max(1, Math.min(COLS, Math.round(rawX / CELL_W) + 1));
     const y = Math.max(1, Math.min(ROWS, Math.round(rawY / CELL_H) + 1));
     const { team, id } = dragRef.current;
-    if (team === "us") (updateUs(id, "x", x), updateUs(id, "y", y));
-    else (updateThem(id, "x", x), updateThem(id, "y", y));
+    if (team === "us")
+      setUs((prev) => prev.map((p) => (p.id === id ? { ...p, x, y } : p)));
+    else setThem((prev) => prev.map((p) => (p.id === id ? { ...p, x, y } : p)));
   };
 
   const onMouseUp = () => {
@@ -229,7 +264,6 @@ export default function ActPage() {
             stroke="rgba(255,255,255,0.3)"
             strokeWidth={1}
           />
-
           {us.map((p) => {
             const cx = PAD + (p.x - 1) * CELL_W + CELL_W / 2;
             const cy = PAD + (p.y - 1) * CELL_H + CELL_H / 2;
@@ -261,7 +295,6 @@ export default function ActPage() {
               </g>
             );
           })}
-
           {showThem &&
             them.map((p) => {
               const cx = PAD + (p.x - 1) * CELL_W + CELL_W / 2;
@@ -297,107 +330,41 @@ export default function ActPage() {
         </svg>
       </div>
 
-      <div className="grid grid-cols-2 gap-8 mb-8">
+      <div className="grid grid-cols-2 gap-6 mb-8">
         <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
+          <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2">
             Us
           </p>
-          <div className="space-y-2">
-            {us.map((p) => (
-              <div key={p.id} className="flex items-center gap-3">
-                <span className="w-6 text-xs text-muted-foreground text-right">
-                  {p.id}
-                </span>
-                <div className="flex items-center gap-1">
-                  <label className="text-xs text-muted-foreground">x</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={COLS}
-                    value={p.x}
-                    onChange={(e) =>
-                      updateUs(
-                        p.id,
-                        "x",
-                        Math.max(1, Math.min(COLS, Number(e.target.value))),
-                      )
-                    }
-                    className="w-14 bg-background border border-border rounded px-2 py-1 text-sm text-foreground"
-                  />
-                </div>
-                <div className="flex items-center gap-1">
-                  <label className="text-xs text-muted-foreground">y</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={ROWS}
-                    value={p.y}
-                    onChange={(e) =>
-                      updateUs(
-                        p.id,
-                        "y",
-                        Math.max(1, Math.min(ROWS, Number(e.target.value))),
-                      )
-                    }
-                    className="w-14 bg-background border border-border rounded px-2 py-1 text-sm text-foreground"
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+          <p className="text-xs text-muted-foreground mb-2">
+            Format: U1(x,y) — one per line
+          </p>
+          <textarea
+            value={usText}
+            onChange={(e) => handleUsText(e.target.value)}
+            rows={11}
+            spellCheck={false}
+            className="w-full font-mono text-sm bg-background border border-border rounded-lg px-3 py-2 text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-border"
+          />
         </div>
         <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
+          <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2">
             Them
           </p>
-          <div className="space-y-2">
-            {them.map((p) => (
-              <div key={p.id} className="flex items-center gap-3">
-                <span className="w-6 text-xs text-muted-foreground text-right">
-                  {p.id}
-                </span>
-                <div className="flex items-center gap-1">
-                  <label className="text-xs text-muted-foreground">x</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={COLS}
-                    value={p.x}
-                    onChange={(e) =>
-                      updateThem(
-                        p.id,
-                        "x",
-                        Math.max(1, Math.min(COLS, Number(e.target.value))),
-                      )
-                    }
-                    className="w-14 bg-background border border-border rounded px-2 py-1 text-sm text-foreground"
-                  />
-                </div>
-                <div className="flex items-center gap-1">
-                  <label className="text-xs text-muted-foreground">y</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={ROWS}
-                    value={p.y}
-                    onChange={(e) =>
-                      updateThem(
-                        p.id,
-                        "y",
-                        Math.max(1, Math.min(ROWS, Number(e.target.value))),
-                      )
-                    }
-                    className="w-14 bg-background border border-border rounded px-2 py-1 text-sm text-foreground"
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+          <p className="text-xs text-muted-foreground mb-2">
+            Format: T1(x,y) — one per line
+          </p>
+          <textarea
+            value={themText}
+            onChange={(e) => handleThemText(e.target.value)}
+            rows={11}
+            spellCheck={false}
+            className="w-full font-mono text-sm bg-background border border-border rounded-lg px-3 py-2 text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-border"
+          />
         </div>
       </div>
 
       <div>
-        <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
+        <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2">
           ASCII
         </p>
         <p className="text-xs text-muted-foreground mb-2">
