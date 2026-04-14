@@ -308,8 +308,9 @@ const ThinkPage = () => {
         .map(Number)
         .sort((a, b) => a - b);
       const maxFrame = frameNums[frameNums.length - 1];
+      const calcDuration = (maxFrame / fps).toFixed(2);
       setStatus(
-        `Loaded ${data.annotations.length} annotations · ${frameNums.length} frames · range ${frameNums[0]}–${maxFrame}`,
+        `Loaded ${data.annotations.length} annotations · ${frameNums.length} frames · range ${frameNums[0]}–${maxFrame} · calc length ${calcDuration}s at ${fps}fps`,
       );
       setLoaded(true);
       setShowConfig(false);
