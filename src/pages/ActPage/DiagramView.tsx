@@ -46,7 +46,8 @@ export default function DiagramView({
     pt.y = e.clientY;
     const svgP = pt.matrixTransform(svg.getScreenCTM()!.inverse());
     const player = (team === "us" ? us : them).find((p) => p.id === id)!;
-    const cx = PAD + (player.x - 1) * CELL_W + CELL_W / 2;
+    const cx =
+      PAD + (player.x - 1) * CELL_W + CELL_W / 2 + (team === "us" ? -4 : 4);
     const cy = PAD + (player.y - 1) * CELL_H + CELL_H / 2;
     dragRef.current = { team, id, offsetX: svgP.x - cx, offsetY: svgP.y - cy };
   };
@@ -176,7 +177,7 @@ export default function DiagramView({
             strokeWidth={1}
           />
           {us.map((p) => {
-            const cx = PAD + (p.x - 1) * CELL_W + CELL_W / 2;
+            const cx = PAD + (p.x - 1) * CELL_W + CELL_W / 2 - 4;
             const cy = PAD + (p.y - 1) * CELL_H + CELL_H / 2;
             return (
               <g
@@ -208,7 +209,7 @@ export default function DiagramView({
           })}
           {showThem &&
             them.map((p) => {
-              const cx = PAD + (p.x - 1) * CELL_W + CELL_W / 2;
+              const cx = PAD + (p.x - 1) * CELL_W + CELL_W / 2 + 4;
               const cy = PAD + (p.y - 1) * CELL_H + CELL_H / 2;
               return (
                 <g
