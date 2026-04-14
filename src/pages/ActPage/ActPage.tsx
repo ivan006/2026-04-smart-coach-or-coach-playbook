@@ -13,33 +13,93 @@ export interface Player {
 }
 export type Team = Player[];
 
-export const defaultUs = (): Team => [
-  { id: 1, x: 1, y: 5 },
-  { id: 2, x: 3, y: 2 },
-  { id: 3, x: 3, y: 4 },
-  { id: 4, x: 3, y: 6 },
-  { id: 5, x: 3, y: 8 },
-  { id: 6, x: 5, y: 2 },
-  { id: 7, x: 5, y: 5 },
-  { id: 8, x: 5, y: 8 },
-  { id: 9, x: 7, y: 3 },
-  { id: 10, x: 7, y: 7 },
-  { id: 11, x: 9, y: 5 },
-];
+export const FORMATIONS: Record<string, Team> = {
+  "4-4-2": [
+    { id: 1, x: 1, y: 5 },
+    { id: 2, x: 3, y: 2 },
+    { id: 3, x: 3, y: 4 },
+    { id: 4, x: 3, y: 6 },
+    { id: 5, x: 3, y: 8 },
+    { id: 6, x: 6, y: 2 },
+    { id: 7, x: 6, y: 4 },
+    { id: 8, x: 6, y: 6 },
+    { id: 9, x: 6, y: 8 },
+    { id: 10, x: 9, y: 4 },
+    { id: 11, x: 9, y: 6 },
+  ],
+  "4-3-3": [
+    { id: 1, x: 1, y: 5 },
+    { id: 2, x: 3, y: 2 },
+    { id: 3, x: 3, y: 4 },
+    { id: 4, x: 3, y: 6 },
+    { id: 5, x: 3, y: 8 },
+    { id: 6, x: 6, y: 3 },
+    { id: 7, x: 6, y: 5 },
+    { id: 8, x: 6, y: 7 },
+    { id: 9, x: 9, y: 2 },
+    { id: 10, x: 9, y: 5 },
+    { id: 11, x: 9, y: 8 },
+  ],
+  "4-2-3-1": [
+    { id: 1, x: 1, y: 5 },
+    { id: 2, x: 3, y: 2 },
+    { id: 3, x: 3, y: 4 },
+    { id: 4, x: 3, y: 6 },
+    { id: 5, x: 3, y: 8 },
+    { id: 6, x: 5, y: 4 },
+    { id: 7, x: 5, y: 6 },
+    { id: 8, x: 7, y: 2 },
+    { id: 9, x: 7, y: 5 },
+    { id: 10, x: 7, y: 8 },
+    { id: 11, x: 9, y: 5 },
+  ],
+  "3-5-2": [
+    { id: 1, x: 1, y: 5 },
+    { id: 2, x: 3, y: 3 },
+    { id: 3, x: 3, y: 5 },
+    { id: 4, x: 3, y: 7 },
+    { id: 5, x: 6, y: 1 },
+    { id: 6, x: 6, y: 3 },
+    { id: 7, x: 6, y: 5 },
+    { id: 8, x: 6, y: 7 },
+    { id: 9, x: 6, y: 9 },
+    { id: 10, x: 9, y: 4 },
+    { id: 11, x: 9, y: 6 },
+  ],
+  "5-3-2": [
+    { id: 1, x: 1, y: 5 },
+    { id: 2, x: 3, y: 1 },
+    { id: 3, x: 3, y: 3 },
+    { id: 4, x: 3, y: 5 },
+    { id: 5, x: 3, y: 7 },
+    { id: 6, x: 3, y: 9 },
+    { id: 7, x: 6, y: 3 },
+    { id: 8, x: 6, y: 5 },
+    { id: 9, x: 6, y: 7 },
+    { id: 10, x: 9, y: 4 },
+    { id: 11, x: 9, y: 6 },
+  ],
+  "4-5-1": [
+    { id: 1, x: 1, y: 5 },
+    { id: 2, x: 3, y: 2 },
+    { id: 3, x: 3, y: 4 },
+    { id: 4, x: 3, y: 6 },
+    { id: 5, x: 3, y: 8 },
+    { id: 6, x: 6, y: 1 },
+    { id: 7, x: 6, y: 3 },
+    { id: 8, x: 6, y: 5 },
+    { id: 9, x: 6, y: 7 },
+    { id: 10, x: 6, y: 9 },
+    { id: 11, x: 9, y: 5 },
+  ],
+};
 
-export const defaultThem = (): Team => [
-  { id: 1, x: 11, y: 5 },
-  { id: 2, x: 9, y: 2 },
-  { id: 3, x: 9, y: 4 },
-  { id: 4, x: 9, y: 6 },
-  { id: 5, x: 9, y: 8 },
-  { id: 6, x: 7, y: 2 },
-  { id: 7, x: 7, y: 5 },
-  { id: 8, x: 7, y: 8 },
-  { id: 9, x: 5, y: 3 },
-  { id: 10, x: 5, y: 7 },
-  { id: 11, x: 3, y: 5 },
-];
+export function mirrorFormation(team: Team): Team {
+  return team.map((p) => ({ ...p, x: 12 - p.x }));
+}
+
+export const defaultUs = (): Team => FORMATIONS["4-4-2"];
+export const defaultThem = (): Team => mirrorFormation(FORMATIONS["4-4-2"]);
 
 export default function ActPage() {
   const [us, setUs] = useState<Team>(defaultUs);
@@ -77,6 +137,8 @@ export default function ActPage() {
         them={them}
         showThem={showThem}
         onMove={handleMove}
+        onSetUs={setUs}
+        onSetThem={setThem}
       />
       <CoordsView
         us={us}
