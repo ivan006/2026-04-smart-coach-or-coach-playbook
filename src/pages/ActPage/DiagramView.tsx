@@ -75,7 +75,7 @@ export default function DiagramView({
       <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
         Diagram
       </p>
-      <div className="flex flex-wrap gap-4 mb-3">
+      <div className="flex flex-col gap-2 mb-3">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-muted-foreground">Us:</span>
           {Object.keys(FORMATIONS).map((f) => (
@@ -93,7 +93,7 @@ export default function DiagramView({
           {Object.keys(FORMATIONS).map((f) => (
             <button
               key={f}
-              onClick={() => onSetThem(mirrorFormation(getFormation(f)))}
+              onClick={() => onSetThem(mirrorFormation(FORMATIONS[f]))}
               className="text-xs border border-border rounded px-2 py-0.5 hover:bg-accent text-muted-foreground"
             >
               {f}
