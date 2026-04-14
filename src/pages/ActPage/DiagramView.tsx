@@ -8,11 +8,11 @@ const PAD = 32;
 interface Props {
   us: Team;
   them: Team;
-  showThem: boolean;
+
   onMove: (team: "us" | "them", id: number, x: number, y: number) => void;
 }
 
-export default function DiagramView({ us, them, showThem, onMove }: Props) {
+export default function DiagramView({ us, them, onMove }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<{
     team: "us" | "them";
@@ -172,38 +172,37 @@ export default function DiagramView({ us, them, showThem, onMove }: Props) {
               </g>
             );
           })}
-          {showThem &&
-            them.map((p) => {
-              const cx = PAD + (p.x - 1) * CELL_W + CELL_W / 2 + 4;
-              const cy = PAD + (p.y - 1) * CELL_H + CELL_H / 2;
-              return (
-                <g
-                  key={p.id}
-                  onMouseDown={(e) => onMouseDown("them", p.id, e)}
-                  style={{ cursor: "grab" }}
+          {them.map((p) => {
+            const cx = PAD + (p.x - 1) * CELL_W + CELL_W / 2 + 4;
+            const cy = PAD + (p.y - 1) * CELL_H + CELL_H / 2;
+            return (
+              <g
+                key={p.id}
+                onMouseDown={(e) => onMouseDown("them", p.id, e)}
+                style={{ cursor: "grab" }}
+              >
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={18}
+                  fill="#ef4444"
+                  stroke="white"
+                  strokeWidth={1.5}
+                />
+                <text
+                  x={cx}
+                  y={cy}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fill="white"
+                  fontSize={12}
+                  fontWeight={600}
                 >
-                  <circle
-                    cx={cx}
-                    cy={cy}
-                    r={18}
-                    fill="#ef4444"
-                    stroke="white"
-                    strokeWidth={1.5}
-                  />
-                  <text
-                    x={cx}
-                    y={cy}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fill="white"
-                    fontSize={12}
-                    fontWeight={600}
-                  >
-                    {p.id}
-                  </text>
-                </g>
-              );
-            })}
+                  {p.id}
+                </text>
+              </g>
+            );
+          })}
         </svg>
       </div>
     </div>

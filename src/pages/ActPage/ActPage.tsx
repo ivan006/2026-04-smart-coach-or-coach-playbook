@@ -113,6 +113,7 @@ function matchesFormation(team: Team, formation: Team): boolean {
 export default function ActPage() {
   const [us, setUs] = useState<Team>(defaultUs);
   const [them, setThem] = useState<Team>(defaultThem);
+  const [showUs, setShowUs] = useState(true);
   const [showThem, setShowThem] = useState(true);
 
   const handleMove = (
@@ -128,17 +129,25 @@ export default function ActPage() {
 
   return (
     <div className="ml-20 min-h-screen p-6 space-y-10">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <span className="text-xs uppercase tracking-widest text-muted-foreground">
           Tactical Board
         </span>
         <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer ml-auto">
           <input
             type="checkbox"
+            checked={showUs}
+            onChange={(e) => setShowUs(e.target.checked)}
+          />
+          Us
+        </label>
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+          <input
+            type="checkbox"
             checked={showThem}
             onChange={(e) => setShowThem(e.target.checked)}
           />
-          Show them
+          Them
         </label>
       </div>
       <div className="flex flex-col gap-2">
@@ -177,18 +186,17 @@ export default function ActPage() {
         </div>
       </div>
       <DiagramView
-        us={us}
-        them={them}
-        showThem={showThem}
+        us={showUs ? us : []}
+        them={showThem ? them : []}
         onMove={handleMove}
       />
       <CoordsView
-        us={us}
-        them={them}
+        us={showUs ? us : []}
+        them={showThem ? them : []}
         onUsChange={setUs}
         onThemChange={setThem}
       />
-      <AsciiView us={us} them={showThem ? them : []} />
+      <AsciiView us={showUs ? us : []} them={showThem ? them : []} />
     </div>
   );
 }
