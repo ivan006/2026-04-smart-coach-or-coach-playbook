@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Team, COLS, ROWS, FORMATIONS, mirrorFormation } from "./ActPage";
+import { Team, COLS, ROWS } from "./ActPage";
 
 const CELL_W = 60;
 const CELL_H = 52;
@@ -10,18 +10,9 @@ interface Props {
   them: Team;
   showThem: boolean;
   onMove: (team: "us" | "them", id: number, x: number, y: number) => void;
-  onSetUs: (team: Team) => void;
-  onSetThem: (team: Team) => void;
 }
 
-export default function DiagramView({
-  us,
-  them,
-  showThem,
-  onMove,
-  onSetUs,
-  onSetThem,
-}: Props) {
+export default function DiagramView({ us, them, showThem, onMove }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<{
     team: "us" | "them";
@@ -75,32 +66,6 @@ export default function DiagramView({
       <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
         Diagram
       </p>
-      <div className="flex flex-col gap-2 mb-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-muted-foreground">Us:</span>
-          {Object.keys(FORMATIONS).map((f) => (
-            <button
-              key={f}
-              onClick={() => onSetUs(FORMATIONS[f])}
-              className="text-xs border border-border rounded px-2 py-0.5 hover:bg-accent text-muted-foreground"
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-muted-foreground">Them:</span>
-          {Object.keys(FORMATIONS).map((f) => (
-            <button
-              key={f}
-              onClick={() => onSetThem(mirrorFormation(FORMATIONS[f]))}
-              className="text-xs border border-border rounded px-2 py-0.5 hover:bg-accent text-muted-foreground"
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-      </div>
       <div className="overflow-auto">
         <svg
           ref={svgRef}
