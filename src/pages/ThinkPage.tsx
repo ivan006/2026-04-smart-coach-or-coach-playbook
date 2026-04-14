@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import PageShell from "@/components/PageShell";
 import {
   decodeRLEEdges,
   drawRLEEdges,
@@ -355,11 +354,7 @@ const ThinkPage = () => {
   };
 
   return (
-    <PageShell
-      icon="📹"
-      title="Think"
-      subtitle="Use video annotation tools to learn from your mistakes."
-    >
+    <div className="ml-20 min-h-screen p-6">
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs uppercase tracking-widest text-muted-foreground">
           COCO Video Annotation Tool
@@ -578,7 +573,7 @@ const ThinkPage = () => {
           </p>
         </div>
       )}
-    </PageShell>
+    </div>
   );
 };
 
