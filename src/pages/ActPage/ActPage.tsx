@@ -1,17 +1,19 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
+import DiagramView from "./DiagramView";
+import CoordsView from "./CoordsView";
+import AsciiView from "./AsciiView";
 
-const COLS = 11;
-const ROWS = 9;
+export const COLS = 11;
+export const ROWS = 9;
 
-interface Player {
+export interface Player {
   id: number;
   x: number;
   y: number;
 }
+export type Team = Player[];
 
-type Team = Player[];
-
-const defaultUs = (): Team => [
+export const defaultUs = (): Team => [
   { id: 1, x: 1, y: 5 },
   { id: 2, x: 3, y: 2 },
   { id: 3, x: 3, y: 4 },
@@ -25,7 +27,7 @@ const defaultUs = (): Team => [
   { id: 11, x: 9, y: 5 },
 ];
 
-const defaultThem = (): Team => [
+export const defaultThem = (): Team => [
   { id: 1, x: 11, y: 5 },
   { id: 2, x: 9, y: 2 },
   { id: 3, x: 9, y: 4 },
@@ -39,11 +41,11 @@ const defaultThem = (): Team => [
   { id: 11, x: 3, y: 5 },
 ];
 
-function teamToText(team: Team, prefix: string): string {
+export function teamToText(team: Team, prefix: string): string {
   return team.map((p) => `${prefix}${p.id}(${p.x},${p.y})`).join("\n");
 }
 
-function parseTeamText(text: string, prefix: string): Team | null {
+export function parseTeamText(text: string, prefix: string): Team | null {
   const lines = text
     .trim()
     .split("\n")
@@ -57,16 +59,13 @@ function parseTeamText(text: string, prefix: string): Team | null {
     const id = parseInt(m[1]),
       x = parseInt(m[2]),
       y = parseInt(m[3]);
-    if (id >= 1 && id <= 11 && x >= 1 && x <= COLS && y >= 1 && y <= ROWS) {
+    if (id >= 1 && id <= 11 && x >= 1 && x <= COLS && y >= 1 && y <= ROWS)
       result.push({ id, x, y });
-    }
   }
   return result.length > 0 ? result : null;
 }
 
-function buildAscii(us: Team, them: Team): string {
-  // 11 cols x 9 rows interior grid
-  // pitch template using space as empty cell
+export function buildAscii(us: Team, them: Team): string {
   const template = [
     "           |           ",
     "  + - +    |    + - +  ",
@@ -78,34 +77,21 @@ function buildAscii(us: Team, them: Team): string {
     "  + - +    |    + - +  ",
     "           |           ",
   ];
-
-  // convert template rows to char arrays (each col = 2 chars wide + space)
-  // map grid col (1-11) to character index in template
-  // template is 23 chars wide for 11 cols: col i -> index (i-1)*2
   const rows = template.map((r) => r.split(""));
-
-  // place players
   const place = (team: Team, char: string) => {
     team.forEach((p) => {
-      const row = p.y - 1;
-      const col = (p.x - 1) * 2;
-      if (row >= 0 && row < 9 && col >= 0 && col < 23) {
-        rows[row][col] = char;
-      }
+      const row = p.y - 1,
+        col = (p.x - 1) * 2;
+      if (row >= 0 && row < 9 && col >= 0 && col < 23) rows[row][col] = char;
     });
   };
-
   place(us, "U");
   place(them, "T");
-
   const border = "+ - - - - - - - - - - - +";
-  const lines = rows.map((r) => "| " + r.join("") + " |");
-  return [border, ...lines, border].join("\n");
+  return [border, ...rows.map((r) => "| " + r.join("") + " |"), border].join(
+    "\n",
+  );
 }
-
-const CELL_W = 60;
-const CELL_H = 52;
-const PAD = 32;
 
 export default function ActPage() {
   const [us, setUs] = useState<Team>(defaultUs);
@@ -115,17 +101,9 @@ export default function ActPage() {
     teamToText(defaultThem(), "T"),
   );
   const [showThem, setShowThem] = useState(true);
-  const dragRef = useRef<{
-    team: "us" | "them";
-    id: number;
-    offsetX: number;
-    offsetY: number;
-  } | null>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
 
   const ascii = buildAscii(us, showThem ? them : []);
 
-  // sync team -> textarea when drag updates positions
   useEffect(() => {
     setUsText(teamToText(us, "U"));
   }, [us]);
@@ -145,51 +123,20 @@ export default function ActPage() {
     if (parsed) setThem(parsed);
   };
 
-  const onMouseDown = (
+  const handleMove = (
     team: "us" | "them",
     id: number,
-    e: React.MouseEvent,
+    x: number,
+    y: number,
   ) => {
-    e.preventDefault();
-    const svg = svgRef.current;
-    if (!svg) return;
-    const pt = svg.createSVGPoint();
-    pt.x = e.clientX;
-    pt.y = e.clientY;
-    const svgP = pt.matrixTransform(svg.getScreenCTM()!.inverse());
-    const player = (team === "us" ? us : them).find((p) => p.id === id)!;
-    const cx = PAD + (player.x - 1) * CELL_W + CELL_W / 2;
-    const cy = PAD + (player.y - 1) * CELL_H + CELL_H / 2;
-    dragRef.current = { team, id, offsetX: svgP.x - cx, offsetY: svgP.y - cy };
-  };
-
-  const onMouseMove = (e: React.MouseEvent) => {
-    if (!dragRef.current || !svgRef.current) return;
-    const svg = svgRef.current;
-    const pt = svg.createSVGPoint();
-    pt.x = e.clientX;
-    pt.y = e.clientY;
-    const svgP = pt.matrixTransform(svg.getScreenCTM()!.inverse());
-    const rawX = svgP.x - dragRef.current.offsetX - PAD;
-    const rawY = svgP.y - dragRef.current.offsetY - PAD;
-    const x = Math.max(1, Math.min(COLS, Math.round(rawX / CELL_W) + 1));
-    const y = Math.max(1, Math.min(ROWS, Math.round(rawY / CELL_H) + 1));
-    const { team, id } = dragRef.current;
     if (team === "us")
       setUs((prev) => prev.map((p) => (p.id === id ? { ...p, x, y } : p)));
     else setThem((prev) => prev.map((p) => (p.id === id ? { ...p, x, y } : p)));
   };
 
-  const onMouseUp = () => {
-    dragRef.current = null;
-  };
-
-  const svgW = PAD * 2 + COLS * CELL_W;
-  const svgH = PAD * 2 + ROWS * CELL_H;
-
   return (
-    <div className="ml-20 min-h-screen p-6">
-      <div className="flex items-center gap-3 mb-4">
+    <div className="ml-20 min-h-screen p-6 space-y-10">
+      <div className="flex items-center gap-3">
         <span className="text-xs uppercase tracking-widest text-muted-foreground">
           Tactical Board
         </span>
@@ -202,198 +149,19 @@ export default function ActPage() {
           Show them
         </label>
       </div>
-
-      <div className="overflow-auto mb-8">
-        <svg
-          ref={svgRef}
-          width={svgW}
-          height={svgH}
-          onMouseMove={onMouseMove}
-          onMouseUp={onMouseUp}
-          onMouseLeave={onMouseUp}
-          style={{ cursor: "default", userSelect: "none" }}
-        >
-          <rect
-            x={PAD}
-            y={PAD}
-            width={COLS * CELL_W}
-            height={ROWS * CELL_H}
-            fill="#2d5a1b"
-            rx={4}
-          />
-          {Array.from({ length: ROWS + 1 }, (_, i) => (
-            <line
-              key={`h${i}`}
-              x1={PAD}
-              y1={PAD + i * CELL_H}
-              x2={PAD + COLS * CELL_W}
-              y2={PAD + i * CELL_H}
-              stroke="rgba(255,255,255,0.15)"
-              strokeWidth={0.5}
-            />
-          ))}
-          {Array.from({ length: COLS + 1 }, (_, i) => (
-            <line
-              key={`v${i}`}
-              x1={PAD + i * CELL_W}
-              y1={PAD}
-              x2={PAD + i * CELL_W}
-              y2={PAD + ROWS * CELL_H}
-              stroke="rgba(255,255,255,0.15)"
-              strokeWidth={0.5}
-            />
-          ))}
-          <line
-            x1={PAD + (COLS / 2) * CELL_W}
-            y1={PAD}
-            x2={PAD + (COLS / 2) * CELL_W}
-            y2={PAD + ROWS * CELL_H}
-            stroke="rgba(255,255,255,0.3)"
-            strokeWidth={1}
-          />
-          <ellipse
-            cx={PAD + (COLS / 2) * CELL_W}
-            cy={PAD + (ROWS / 2) * CELL_H}
-            rx={CELL_W * 1.5}
-            ry={CELL_H * 1.2}
-            fill="none"
-            stroke="rgba(255,255,255,0.3)"
-            strokeWidth={1}
-          />
-          <rect
-            x={PAD}
-            y={PAD + CELL_H * 2}
-            width={CELL_W * 1.5}
-            height={CELL_H * 3}
-            fill="none"
-            stroke="rgba(255,255,255,0.3)"
-            strokeWidth={1}
-          />
-          <rect
-            x={PAD + COLS * CELL_W - CELL_W * 1.5}
-            y={PAD + CELL_H * 2}
-            width={CELL_W * 1.5}
-            height={CELL_H * 3}
-            fill="none"
-            stroke="rgba(255,255,255,0.3)"
-            strokeWidth={1}
-          />
-          {us.map((p) => {
-            const cx = PAD + (p.x - 1) * CELL_W + CELL_W / 2;
-            const cy = PAD + (p.y - 1) * CELL_H + CELL_H / 2;
-            return (
-              <g
-                key={p.id}
-                onMouseDown={(e) => onMouseDown("us", p.id, e)}
-                style={{ cursor: "grab" }}
-              >
-                <circle
-                  cx={cx}
-                  cy={cy}
-                  r={18}
-                  fill="#3b82f6"
-                  stroke="white"
-                  strokeWidth={1.5}
-                />
-                <text
-                  x={cx}
-                  y={cy}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  fill="white"
-                  fontSize={12}
-                  fontWeight={600}
-                >
-                  {p.id}
-                </text>
-              </g>
-            );
-          })}
-          {showThem &&
-            them.map((p) => {
-              const cx = PAD + (p.x - 1) * CELL_W + CELL_W / 2;
-              const cy = PAD + (p.y - 1) * CELL_H + CELL_H / 2;
-              return (
-                <g
-                  key={p.id}
-                  onMouseDown={(e) => onMouseDown("them", p.id, e)}
-                  style={{ cursor: "grab" }}
-                >
-                  <circle
-                    cx={cx}
-                    cy={cy}
-                    r={18}
-                    fill="#ef4444"
-                    stroke="white"
-                    strokeWidth={1.5}
-                  />
-                  <text
-                    x={cx}
-                    y={cy}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fill="white"
-                    fontSize={12}
-                    fontWeight={600}
-                  >
-                    {p.id}
-                  </text>
-                </g>
-              );
-            })}
-        </svg>
-      </div>
-
-      <div className="grid grid-cols-2 gap-6 mb-8">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2">
-            Us
-          </p>
-          <p className="text-xs text-muted-foreground mb-2">
-            Format: U1(x,y) — one per line
-          </p>
-          <textarea
-            value={usText}
-            onChange={(e) => handleUsText(e.target.value)}
-            rows={11}
-            spellCheck={false}
-            className="w-full font-mono text-sm bg-background border border-border rounded-lg px-3 py-2 text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-border"
-          />
-        </div>
-        <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2">
-            Them
-          </p>
-          <p className="text-xs text-muted-foreground mb-2">
-            Format: T1(x,y) — one per line
-          </p>
-          <textarea
-            value={themText}
-            onChange={(e) => handleThemText(e.target.value)}
-            rows={11}
-            spellCheck={false}
-            className="w-full font-mono text-sm bg-background border border-border rounded-lg px-3 py-2 text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-border"
-          />
-        </div>
-      </div>
-
-      <div>
-        <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2">
-          ASCII
-        </p>
-        <p className="text-xs text-muted-foreground mb-2">
-          Read-only · copy and share on WhatsApp
-        </p>
-        <pre className="font-mono text-sm bg-card border border-border rounded-xl p-4 leading-6 select-all">
-          {ascii}
-        </pre>
-        <button
-          onClick={() => navigator.clipboard.writeText(ascii)}
-          className="mt-3 text-xs border border-border rounded px-3 py-1.5 hover:bg-accent text-muted-foreground"
-        >
-          Copy to clipboard
-        </button>
-      </div>
+      <DiagramView
+        us={us}
+        them={them}
+        showThem={showThem}
+        onMove={handleMove}
+      />
+      <CoordsView
+        usText={usText}
+        themText={themText}
+        onUsChange={handleUsText}
+        onThemChange={handleThemText}
+      />
+      <AsciiView ascii={ascii} />
     </div>
   );
 }
