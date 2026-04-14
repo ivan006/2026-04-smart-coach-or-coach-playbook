@@ -3,13 +3,13 @@ import { Team, COLS, ROWS } from "./ActPage";
 function buildAscii(us: Team, them: Team): string {
   const template = [
     "     |     ",
-    " +-+ | +-+ ",
-    " | | | | | ",
-    "++ | +++ | ++",
-    "|| | ||| | ||",
-    "++ | +++ | ++",
-    " | | | | | ",
-    " +-+ | +-+ ",
+    "+-+  |  +-+",
+    "| |  |  | |",
+    "++| +++ |++",
+    "||| ||| |||",
+    "++| +++ |++",
+    "| |  |  | |",
+    "+-+  |  +-+",
     "     |     ",
   ];
   const rows = template.map((r) => r.split(""));
