@@ -9,13 +9,13 @@ function buildAscii(
   const template = [
     "+------------+",
     "|            |",
-    "+-+        +-+",
-    "| |        | |",
-    "++|  +--+  |++",
-    "|||  |  |  |||",
-    "++|  +--+  |++",
-    "| |        | |",
-    "+-+        +-+",
+    "+            +",
+    "|            |",
+    "+            +",
+    "|            |",
+    "+            +",
+    "|            |",
+    "+            +",
     "|            |",
     "+------------+",
   ];
@@ -48,8 +48,8 @@ interface Props {
   them: Team;
 }
 export default function AsciiView({ us, them }: Props) {
-  const [usChar, setUsChar] = useState("🔵");
-  const [themChar, setThemChar] = useState("🔴");
+  const [usChar, setUsChar] = useState("U");
+  const [themChar, setThemChar] = useState("T");
   const ascii = buildAscii(us, them, usChar, themChar);
   return (
     <div>

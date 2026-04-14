@@ -101,6 +101,15 @@ export function mirrorFormation(team: Team): Team {
 export const defaultUs = (): Team => FORMATIONS["4-4-2"];
 export const defaultThem = (): Team => mirrorFormation(FORMATIONS["4-4-2"]);
 
+function matchesFormation(team: Team, formation: Team): boolean {
+  const sorted = (t: Team) =>
+    [...t]
+      .sort((a, b) => a.id - b.id)
+      .map((p) => `${p.x},${p.y}`)
+      .join("|");
+  return sorted(team) === sorted(formation);
+}
+
 export default function ActPage() {
   const [us, setUs] = useState<Team>(defaultUs);
   const [them, setThem] = useState<Team>(defaultThem);
@@ -135,27 +144,36 @@ export default function ActPage() {
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-muted-foreground w-10">Us:</span>
-          {Object.keys(FORMATIONS).map((f) => (
-            <button
-              key={f}
-              onClick={() => setUs(FORMATIONS[f])}
-              className="text-xs border border-border rounded px-2 py-0.5 hover:bg-accent text-muted-foreground"
-            >
-              {f}
-            </button>
-          ))}
+          {Object.keys(FORMATIONS).map((f) => {
+            const active = matchesFormation(us, FORMATIONS[f]);
+            return (
+              <button
+                key={f}
+                onClick={() => setUs(FORMATIONS[f])}
+                className={`text-xs border rounded px-2 py-0.5 ${active ? "border-foreground text-foreground bg-accent" : "border-border text-muted-foreground hover:bg-accent"}`}
+              >
+                {f}
+              </button>
+            );
+          })}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-muted-foreground w-10">Them:</span>
-          {Object.keys(FORMATIONS).map((f) => (
-            <button
-              key={f}
-              onClick={() => setThem(mirrorFormation(FORMATIONS[f]))}
-              className="text-xs border border-border rounded px-2 py-0.5 hover:bg-accent text-muted-foreground"
-            >
-              {f}
-            </button>
-          ))}
+          {Object.keys(FORMATIONS).map((f) => {
+            const active = matchesFormation(
+              them,
+              mirrorFormation(FORMATIONS[f]),
+            );
+            return (
+              <button
+                key={f}
+                onClick={() => setThem(mirrorFormation(FORMATIONS[f]))}
+                className={`text-xs border rounded px-2 py-0.5 ${active ? "border-foreground text-foreground bg-accent" : "border-border text-muted-foreground hover:bg-accent"}`}
+              >
+                {f}
+              </button>
+            );
+          })}
         </div>
       </div>
       <DiagramView
