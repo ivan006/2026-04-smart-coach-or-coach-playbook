@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Team, COLS, ROWS } from "./ActPage";
-
 function buildAscii(
   us: Team,
   them: Team,
@@ -19,17 +18,6 @@ function buildAscii(
     "+-+   |   +-+",
     "|     |     |",
     "+-----------+",
-    // "+-----+-----+",
-    // "|     |     |",
-    // "|     |     +",
-    // "|     |     |",
-    // "+     |     +",
-    // "|     |     |",
-    // "+     |     +",
-    // "|     |     |",
-    // "+     |     +",
-    // "|     |     |",
-    // "+-----+-----+",
   ];
   const rows = template.map((r) => r.split(""));
   const place = (team: Team, char: string) => {
@@ -49,25 +37,20 @@ function buildAscii(
       .trimEnd();
   return rows.map((r) => inflate(r)).join("\n");
 }
-
 // get first grapheme (handles emoji as single char)
 function firstGrapheme(str: string): string {
   const seg = new Intl.Segmenter().segment(str);
   const first = seg[Symbol.iterator]().next().value;
   return first ? first.segment : str[0] || "U";
 }
-
 interface Props {
   us: Team;
   them: Team;
 }
-
 export default function AsciiView({ us, them }: Props) {
   const [usChar, setUsChar] = useState("🔵");
   const [themChar, setThemChar] = useState("🔴");
-
   const ascii = buildAscii(us, them, usChar, themChar);
-
   return (
     <div>
       <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
