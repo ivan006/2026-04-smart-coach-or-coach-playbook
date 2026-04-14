@@ -2,22 +2,24 @@ import { Team, COLS, ROWS } from "./ActPage";
 
 function buildAscii(us: Team, them: Team): string {
   const template = [
-    "     |     ",
-    "+-+  |  +-+",
-    "| |  |  | |",
-    "++| +++ |++",
-    "||| ||| |||",
-    "++| +++ |++",
-    "| |  |  | |",
-    "+-+  |  +-+",
-    "     |     ",
+    "+-----------+",
+    "|     |     |",
+    "+-+   |   +-+",
+    "| |   |   | |",
+    "++|  +++  |++",
+    "|||  |||  |||",
+    "++|  +++  |++",
+    "| |   |   | |",
+    "+-+   |   +-+",
+    "|     |     |",
+    "+-----------+",
   ];
   const rows = template.map((r) => r.split(""));
   const place = (team: Team, char: string) => {
     team.forEach((p) => {
-      const row = p.y - 1,
-        col = p.x - 1;
-      if (row >= 0 && row < ROWS && col >= 0 && col < COLS)
+      const row = p.y; // +1 to skip top border row
+      const col = p.x; // +1 to skip left border col
+      if (row >= 1 && row <= ROWS && col >= 1 && col <= COLS)
         rows[row][col] = char;
     });
   };
@@ -28,10 +30,7 @@ function buildAscii(us: Team, them: Team): string {
       .map((c) => c + " ")
       .join("")
       .trimEnd();
-  const border = "+ - - - - - - - - - - +";
-  return [border, ...rows.map((r) => "| " + inflate(r) + " |"), border].join(
-    "\n",
-  );
+  return rows.map((r) => inflate(r)).join("\n");
 }
 
 interface Props {
