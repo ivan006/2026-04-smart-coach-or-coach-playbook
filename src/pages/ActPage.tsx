@@ -2,7 +2,6 @@ import { useState, useRef, useCallback, useEffect } from "react";
 
 const COLS = 11;
 const ROWS = 9;
-const EMPTY = ".";
 
 interface Player {
   id: number;
@@ -65,27 +64,43 @@ function parseTeamText(text: string, prefix: string): Team | null {
   return result.length > 0 ? result : null;
 }
 
-function buildGrid(us: Team, them: Team): string[][] {
-  const grid: string[][] = Array.from({ length: ROWS }, () =>
-    Array(COLS).fill(EMPTY),
-  );
-  us.forEach((p) => {
-    const row = p.y - 1,
-      col = p.x - 1;
-    if (row >= 0 && row < ROWS && col >= 0 && col < COLS) grid[row][col] = "U";
-  });
-  them.forEach((p) => {
-    const row = p.y - 1,
-      col = p.x - 1;
-    if (row >= 0 && row < ROWS && col >= 0 && col < COLS) grid[row][col] = "T";
-  });
-  return grid;
-}
+function buildAscii(us: Team, them: Team): string {
+  // 11 cols x 9 rows interior grid
+  // pitch template using space as empty cell
+  const template = [
+    "           |           ",
+    "  + - +    |    + - +  ",
+    "  |   |    |    |   |  ",
+    "+ + + |  + + +  | + + +",
+    "| | | |  | | |  | | | |",
+    "+ + + |  + + +  | + + +",
+    "  |   |    |    |   |  ",
+    "  + - +    |    + - +  ",
+    "           |           ",
+  ];
 
-function buildAscii(grid: string[][]): string {
-  const top = "+" + Array(COLS).fill("-").join("-") + "+";
-  const rows = grid.map((row) => "|" + row.join(" ") + "|");
-  return [top, ...rows, top].join("\n");
+  // convert template rows to char arrays (each col = 2 chars wide + space)
+  // map grid col (1-11) to character index in template
+  // template is 23 chars wide for 11 cols: col i -> index (i-1)*2
+  const rows = template.map((r) => r.split(""));
+
+  // place players
+  const place = (team: Team, char: string) => {
+    team.forEach((p) => {
+      const row = p.y - 1;
+      const col = (p.x - 1) * 2;
+      if (row >= 0 && row < 9 && col >= 0 && col < 23) {
+        rows[row][col] = char;
+      }
+    });
+  };
+
+  place(us, "U");
+  place(them, "T");
+
+  const border = "+ - - - - - - - - - - - +";
+  const lines = rows.map((r) => "| " + r.join("") + " |");
+  return [border, ...lines, border].join("\n");
 }
 
 const CELL_W = 60;
@@ -108,8 +123,7 @@ export default function ActPage() {
   } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const grid = buildGrid(us, them);
-  const ascii = buildAscii(grid);
+  const ascii = buildAscii(us, showThem ? them : []);
 
   // sync team -> textarea when drag updates positions
   useEffect(() => {
