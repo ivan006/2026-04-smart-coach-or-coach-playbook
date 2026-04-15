@@ -52,7 +52,11 @@ export function tickState(state: GameState): GameState {
     hasBall: players.some((p) => p.teamId === t.id && p.hasBall),
   }));
 
-  // 3. Pressure
+  // 3. Scan rotation — players slowly rotate scanAngle to check surroundings
+  const SCAN_SPEED = Math.PI / 120; // full rotation in ~4 seconds
+  players = players.map((p) => ({ ...p, scanAngle: p.scanAngle + SCAN_SPEED }));
+
+  // 4. Pressure — uses both facing angle and scan angle
   players = updatePressure(players);
 
   // 4. Squads

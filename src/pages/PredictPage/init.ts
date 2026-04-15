@@ -53,7 +53,13 @@ function makePlayers(teamId: TeamId): Player[] {
       hasBall: false,
       pressure: 0,
       action: "move-to-space" as const,
+      tackleCooldown: 0,
+      scanAngle: 0,
+      deferring: false,
       homePos: hp,
+      tackleCooldown: 0,
+      scanAngle: 0,
+      deferring: false,
     };
   });
 }
@@ -123,6 +129,9 @@ export function resetAfterGoal(
     hasBall: false,
     pressure: 0,
     action: "move-to-space" as const,
+    tackleCooldown: 0,
+    scanAngle: 0,
+    deferring: false,
     angle: p.teamId === "away" ? Math.PI : 0,
   }));
 

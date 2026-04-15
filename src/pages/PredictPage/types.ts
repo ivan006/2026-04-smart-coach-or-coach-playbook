@@ -47,6 +47,7 @@ export interface Player {
   homePos: Vec2;
   tackleCooldown: number;
   deferring: boolean;
+  scanAngle: number; // current scan rotation, independent of movement
   targetSquadRole?: SquadRole; // cached worthy squad target for relay/defence
 }
 

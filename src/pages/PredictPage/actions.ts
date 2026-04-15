@@ -21,6 +21,7 @@ import {
   steerAndMove,
   isInShootingPosition,
   lineOfSightScore,
+  clampTurn as clampTurnAngle,
 } from "./prepActions";
 import { execPass, execShoot } from "./execActions";
 
@@ -35,7 +36,7 @@ function hasLineOfSight(
   allPlayers: Player[],
 ): boolean {
   const opponents = allPlayers.filter((p) => p.teamId !== from.teamId);
-  return lineOfSightScore(from.pos, to.pos, opponents) > 50;
+  return lineOfSightScore(from.pos, to.pos, opponents) > 80;
 }
 
 export function tickPlayerWithBall(
@@ -54,6 +55,7 @@ export function tickPlayerWithBall(
       .filter(
         (t) =>
           t.teamId === p.teamId &&
+          t.squadRole === p.squadRole &&
           t.id !== p.id &&
           t.pressure < p.pressure &&
           hasLineOfSight(p, t, allPlayers),
@@ -101,19 +103,31 @@ export function tickPlayerWithoutBall(
       (p.action === "prep-pass" || p.action === "pass") &&
       dist(p.pos, player.pos) < PASS_RANGE,
   );
-  if (teammatePassing) return prepReceive(player, allPlayers);
+  if (teammatePassing)
+    return faceTarget(prepReceive(player, allPlayers), ball.pos);
 
+  let result: Player;
   switch (squad.role) {
     case "right-wing":
     case "left-wing":
-      return tickWinger(player, squad.action as string, ball, allPlayers);
+      result = tickWinger(player, squad.action as string, ball, allPlayers);
+      break;
     case "relay":
-      return tickRelay(player, squad.action as string, ball, allPlayers);
+      result = tickRelay(player, squad.action as string, ball, allPlayers);
+      break;
     case "defence":
-      return tickDefence(player, squad.action as string, ball, allPlayers);
+      result = tickDefence(player, squad.action as string, ball, allPlayers);
+      break;
     default:
-      return player;
+      result = player;
   }
+  return faceTarget(result, ball.pos);
+}
+
+function faceTarget(player: Player, target: { x: number; y: number }): Player {
+  const angle = Math.atan2(target.y - player.pos.y, target.x - player.pos.x);
+  const clamped = clampTurnAngle(player.angle, angle);
+  return { ...player, angle: clamped };
 }
 
 function tickWinger(

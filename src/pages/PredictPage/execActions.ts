@@ -42,7 +42,7 @@ export function execPass(
     y: target.pos.y - passer.pos.y,
   });
   const d = dist(passer.pos, target.pos);
-  const power = Math.min(PASS_POWER, Math.max(4, d * 0.08));
+  const power = Math.min(PASS_POWER, Math.max(1.5, d * 0.06));
   return {
     player: { ...passer, hasBall: false, action: "pass" },
     ball: {

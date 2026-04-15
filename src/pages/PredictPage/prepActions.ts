@@ -181,7 +181,18 @@ function findLowPressureSpace(player: Player, allPlayers: Player[]): Vec2 {
 
 export function prepShoot(player: Player, allPlayers: Player[]): Player {
   const gt = goalTarget(player.teamId);
-  const moved = steerAndMove(player, gt, PLAYER_SPEED, allPlayers);
+  // Give opponents a wide berth when advancing — treat them like teammates for steering
+  const wideAllPlayers = allPlayers.map((p) =>
+    p.teamId !== player.teamId
+      ? { ...p, teamId: player.teamId as typeof p.teamId }
+      : p,
+  );
+  const moved = steerAndMove(
+    { ...player, action: "prep-shoot" },
+    gt,
+    PLAYER_SPEED,
+    wideAllPlayers,
+  );
   return {
     ...player,
     pos: clampToPitch(moved.pos),
@@ -238,7 +249,7 @@ export function lineOfSightScore(
     const perpDist = Math.sqrt(
       (opp.pos.x - closestX) ** 2 + (opp.pos.y - closestY) ** 2,
     );
-    if (perpDist < 25) score -= (25 - perpDist) * 3; // penalise blocked lanes
+    if (perpDist < 40) score -= (40 - perpDist) * 3; // penalise blocked lanes
   }
   return Math.max(0, score);
 }
@@ -274,7 +285,7 @@ export function prepReceive(player: Player, allPlayers: Player[]): Player {
 
   // Sample positions ahead of carrier in a forward cone
   const candidates: Vec2[] = [];
-  for (let forward = 80; forward <= 240; forward += 80) {
+  for (let forward = 80; forward <= 400; forward += 80) {
     for (let lateral = -120; lateral <= 120; lateral += 60) {
       const cx = carrier.pos.x + nx * forward + px * lateral;
       const cy = carrier.pos.y + ny * forward + ny * lateral;
@@ -299,7 +310,13 @@ export function prepReceive(player: Player, allPlayers: Player[]): Player {
     };
   }
 
-  // Pick position with best open space AND clear line of sight to carrier
+  // Score candidates by open space, clear LOS to carrier, AND distance from squadmates
+  const squadmates = allPlayers.filter(
+    (p) =>
+      p.teamId === carrier.teamId &&
+      p.squadRole === carrier.squadRole &&
+      p.id !== player.id,
+  );
   const best = candidates.reduce((bestC, c) => {
     const minOpp =
       opponents.length > 0
@@ -311,7 +328,17 @@ export function prepReceive(player: Player, allPlayers: Player[]): Player {
         : 999;
     const losC = lineOfSightScore(c, carrier.pos, opponents);
     const losBest = lineOfSightScore(bestC, carrier.pos, opponents);
-    return minOpp + losC > bestMinOpp + losBest ? c : bestC;
+    const squadDistC =
+      squadmates.length > 0
+        ? Math.min(...squadmates.map((s) => dist(c, s.pos)))
+        : 999;
+    const squadDistB =
+      squadmates.length > 0
+        ? Math.min(...squadmates.map((s) => dist(bestC, s.pos)))
+        : 999;
+    const scoreC = minOpp + losC + squadDistC;
+    const scoreBest = bestMinOpp + losBest + squadDistB;
+    return scoreC > scoreBest ? c : bestC;
   });
 
   const moved = steerAndMove(player, best, PLAYER_SPEED * 0.9, allPlayers);
