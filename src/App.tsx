@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppSidebar from "@/components/AppSidebar";
 import ThinkPage from "@/pages/ThinkPage/ThinkPage";
-import PredictPage from "@/pages/PredictPage";
+import PredictPage from "@/pages/PredictPage/PredictPage";
 import ActPage from "@/pages/ActPage/ActPage";
 import NotFound from "@/pages/NotFound";
 
