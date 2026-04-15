@@ -110,6 +110,16 @@ function applyStagger(team: Team, direction: 1 | -1 = 1): Team {
   });
 }
 
+function applyCompact(team: Team, direction: 1 | -1 = 1): Team {
+  const origin = direction === 1 ? 3 : 10;
+  return team.map((p) => {
+    if (p.id === 1) return p;
+    const dist = p.x - origin;
+    const newX = Math.round(origin + dist * (2 / 3));
+    return { ...p, x: Math.max(1, Math.min(COLS, newX)) };
+  });
+}
+
 function matchesFormation(team: Team, formation: Team): boolean {
   const sorted = (t: Team) =>
     [...t]
@@ -125,6 +135,7 @@ export default function ActPage() {
   const [showUs, setShowUs] = useState(true);
   const [showThem, setShowThem] = useState(true);
   const [stagger, setStagger] = useState(false);
+  const [compress, setCompress] = useState<"back" | "fwd" | null>(null);
 
   const handleMove = (
     team: "us" | "them",
@@ -137,8 +148,21 @@ export default function ActPage() {
     else setThem((prev) => prev.map((p) => (p.id === id ? { ...p, x, y } : p)));
   };
 
-  const displayUs = showUs ? (stagger ? applyStagger(us, 1) : us) : [];
-  const displayThem = showThem ? (stagger ? applyStagger(them, -1) : them) : [];
+  const applyTransforms = (team: Team, dir: 1 | -1) => {
+    const backOrigin = dir === 1 ? 3 : 10;
+    const fwdOrigin = dir === 1 ? 10 : 3;
+    return team.map((p) => {
+      let x = p.x;
+      if (compress === "back" && p.id !== 1)
+        x = Math.round(backOrigin + (x - backOrigin) * (2 / 3));
+      if (compress === "fwd" && p.id !== 1)
+        x = Math.round(fwdOrigin + (x - fwdOrigin) * (2 / 3));
+      if (stagger && (p.y <= 3 || p.y >= 7)) x = x + dir;
+      return { ...p, x: Math.max(1, Math.min(COLS, x)) };
+    });
+  };
+  const displayUs = showUs ? applyTransforms(us, 1) : [];
+  const displayThem = showThem ? applyTransforms(them, -1) : [];
 
   return (
     <div className="ml-20 min-h-screen p-6 space-y-10">
@@ -162,14 +186,33 @@ export default function ActPage() {
           />
           Them
         </label>
-        <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
-          <input
-            type="checkbox"
-            checked={stagger}
-            onChange={(e) => setStagger(e.target.checked)}
-          />
-          Stagger
-        </label>
+        <div className="flex items-center gap-3 ml-auto">
+          <span className="text-xs text-muted-foreground">Transforms:</span>
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+            <input
+              type="checkbox"
+              checked={stagger}
+              onChange={(e) => setStagger(e.target.checked)}
+            />
+            Stagger
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+            <input
+              type="checkbox"
+              checked={compress === "back"}
+              onChange={(e) => setCompress(e.target.checked ? "back" : null)}
+            />
+            Compress back
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+            <input
+              type="checkbox"
+              checked={compress === "fwd"}
+              onChange={(e) => setCompress(e.target.checked ? "fwd" : null)}
+            />
+            Compress fwd
+          </label>
+        </div>
       </div>
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2 flex-wrap">
