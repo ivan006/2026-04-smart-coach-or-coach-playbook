@@ -1,4 +1,4 @@
-import { Ball, Vec2 } from "./types";
+import { Ball, Vec2, Player } from "./types";
 import {
   PITCH_LEFT,
   PITCH_RIGHT,
@@ -9,13 +9,16 @@ import {
   FRICTION,
   STOP_THRESH,
   BOUNCE_DAMP,
+  PLAYER_RADIUS,
 } from "./constants";
 
-export function tickBall(ball: Ball): {
-  ball: Ball;
-  homeGoal: boolean;
-  awayGoal: boolean;
-} {
+const BALL_RADIUS = 6;
+const BALL_BOUNCE = 0.5;
+
+export function tickBall(
+  ball: Ball,
+  players: Player[] = [],
+): { ball: Ball; homeGoal: boolean; awayGoal: boolean } {
   if (!ball.loose) return { ball, homeGoal: false, awayGoal: false };
 
   let { x, y } = ball.pos;
@@ -60,6 +63,26 @@ export function tickBall(ball: Ball): {
   if (y >= PITCH_BOTTOM) {
     y = PITCH_BOTTOM;
     vy = -Math.abs(vy) * BOUNCE_DAMP;
+  }
+
+  // Player bounce — ball deflects off any player it hits
+  const minDist = PLAYER_RADIUS + BALL_RADIUS;
+  for (const p of players) {
+    if (p.hasBall) continue;
+    const dx = x - p.pos.x;
+    const dy = y - p.pos.y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d < minDist && d > 0) {
+      // Push ball out of player
+      const nx = dx / d;
+      const ny = dy / d;
+      x = p.pos.x + nx * minDist;
+      y = p.pos.y + ny * minDist;
+      // Reflect velocity off player surface
+      const dot = vx * nx + vy * ny;
+      vx = (vx - 2 * dot * nx) * BALL_BOUNCE;
+      vy = (vy - 2 * dot * ny) * BALL_BOUNCE;
+    }
   }
 
   if (Math.abs(vx) < STOP_THRESH && Math.abs(vy) < STOP_THRESH) {

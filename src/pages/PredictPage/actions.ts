@@ -42,8 +42,7 @@ export function tickPlayerWithBall(
       (t) =>
         t.teamId === p.teamId &&
         worthy.playerIds.includes(t.id) &&
-        t.pressure < HIGH_PRESSURE &&
-        dist(p.pos, t.pos) < PASS_RANGE,
+        t.pressure < HIGH_PRESSURE,
     );
     if (target) return execPass(p, target, ball);
   }

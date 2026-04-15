@@ -110,8 +110,8 @@ function squadPressMove(
       deferring: false,
     };
   }
-  const sp = supportPos(leader, target);
-  const moved = steerAndMove(player, sp, speed * 0.9, allPlayers);
+  // Supporters follow the leader
+  const moved = steerAndMove(player, leader.pos, speed * 0.95, allPlayers);
   return {
     ...player,
     pos: clampToPitch(moved.pos),
@@ -248,6 +248,42 @@ export function prepIntercept(
       deferring: true,
     };
   }
+
+  const mates = allPlayers.filter(
+    (p) =>
+      p.teamId === player.teamId &&
+      p.squadRole === player.squadRole &&
+      !p.hasBall,
+  );
+  const leader = mates.reduce((best, p) =>
+    dist(p.pos, ballPos) < dist(best.pos, ballPos) ? p : best,
+  );
+  const isLeader = leader.id === player.id;
+
+  // Non-leader who is close to ball — step back to give leader space
+  if (!isLeader && dist(player.pos, ballPos) < 60) {
+    const dx = player.pos.x - ballPos.x;
+    const dy = player.pos.y - ballPos.y;
+    const d = Math.sqrt(dx * dx + dy * dy) || 1;
+    const stepBack = clampToPitch({
+      x: player.pos.x + (dx / d) * 20,
+      y: player.pos.y + (dy / d) * 20,
+    });
+    const moved = steerAndMove(
+      player,
+      stepBack,
+      PLAYER_SPEED * 0.8,
+      allPlayers,
+    );
+    return {
+      ...player,
+      pos: clampToPitch(moved.pos),
+      angle: moved.angle,
+      action: "prep-intercept",
+      deferring: false,
+    };
+  }
+
   return squadPressMove(
     player,
     allPlayers,
@@ -277,6 +313,27 @@ export function holdPosition(
   allPlayers: Player[],
   speed = PLAYER_SPEED * 0.6,
 ): Player {
+  // If close to ball or carrier but not prepping to intercept/tackle, step back to give space
+  const ballOrCarrier = allPlayers.find((p) => p.hasBall) ?? null;
+  const closeToBall = ballOrCarrier && dist(player.pos, ballOrCarrier.pos) < 80;
+  const notActing =
+    player.action !== "prep-tackle" && player.action !== "prep-intercept";
+
+  if (closeToBall && notActing) {
+    // Step away from ball carrier
+    const bp = ballOrCarrier!.pos;
+    const dx = player.pos.x - bp.x;
+    const dy = player.pos.y - bp.y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d > 0) {
+      const stepBack = clampToPitch({
+        x: player.pos.x + (dx / d) * PLAYER_SPEED * 1.5,
+        y: player.pos.y + (dy / d) * PLAYER_SPEED * 1.5,
+      });
+      return { ...player, pos: stepBack, action: "hold" };
+    }
+  }
+
   const moved = steerAndMove(player, player.homePos, speed, allPlayers);
   return {
     ...player,

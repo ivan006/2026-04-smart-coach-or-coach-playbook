@@ -14,7 +14,7 @@ import { resetAfterGoal } from "./init";
 import { PLAYER_RADIUS } from "./constants";
 
 const TACKLE_CONTACT = 22;
-const PICKUP_RADIUS = PLAYER_RADIUS * 3;
+const PICKUP_RADIUS = TACKLE_CONTACT;
 
 export function tickState(state: GameState): GameState {
   let players = state.players.map((p) => ({ ...p }));
@@ -22,7 +22,7 @@ export function tickState(state: GameState): GameState {
   let teams = state.teams.map((t) => ({ ...t }));
 
   // 1. Ball physics
-  const { ball: newBall, homeGoal, awayGoal } = tickBall(ball);
+  const { ball: newBall, homeGoal, awayGoal } = tickBall(ball, players);
   ball = newBall;
 
   if (homeGoal)
