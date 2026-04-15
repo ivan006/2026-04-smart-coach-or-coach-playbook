@@ -270,20 +270,19 @@ export function prepReceive(player: Player, allPlayers: Player[]): Player {
   }
 
   const opponents = allPlayers.filter((p) => p.teamId !== player.teamId);
+
+  // Stable radial/tangential axes based on carrier → goal direction
   const gt =
     carrier.teamId === "home"
       ? { x: PITCH_RIGHT, y: CY }
       : { x: PITCH_LEFT, y: CY };
-
-  // Direction from carrier to goal
-  const dx = gt.x - carrier.pos.x;
-  const dy = gt.y - carrier.pos.y;
-  const d = Math.sqrt(dx * dx + dy * dy) || 1;
-  const nx = dx / d;
-  const ny = dy / d;
-  const px = -ny; // perpendicular
-
-  const py = -nx; // perpendicular y component
+  const gdx = gt.x - carrier.pos.x;
+  const gdy = gt.y - carrier.pos.y;
+  const gd = Math.sqrt(gdx * gdx + gdy * gdy) || 1;
+  const nx = gdx / gd; // radial
+  const ny = gdy / gd;
+  const px = -ny; // tangential
+  const py = nx;
 
   // Sample positions ahead of carrier in a wide forward cone
   const candidates: Vec2[] = [];
