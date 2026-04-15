@@ -17,9 +17,8 @@ import {
   HIGH_PRESSURE,
 } from "./constants";
 
-const TACKLE_RANGE = 18; // px — contact distance to trigger tackle
-const TACKLE_COOLDOWN = 60; // ticks (1 sec at 60fps)
-const KNOCK_POWER = 8; // ball speed when knocked away
+const TACKLE_COOLDOWN = 60;
+const KNOCK_POWER = 8;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -94,6 +93,7 @@ function findLowPressureSpace(player: Player, allPlayers: Player[]): Vec2 {
   });
 }
 
+/** Normal steered movement — avoids other players */
 function steerAndMove(
   player: Player,
   rawTarget: { x: number; y: number },
@@ -109,6 +109,15 @@ function steerAndMove(
     player.squadRole,
   );
   return moveToward(player.pos, steered, speed);
+}
+
+/** Direct movement toward target — bypasses steering, used when chasing the ball */
+function directMove(
+  player: Player,
+  target: { x: number; y: number },
+  speed: number,
+) {
+  return moveToward(player.pos, target, speed);
 }
 
 function doPass(
@@ -158,10 +167,6 @@ export interface TackleResult {
   ball: Ball;
 }
 
-/**
- * Called when a player without the ball makes contact with an opponent ball carrier.
- * Returns updated tackler, carrier, and ball based on random outcome.
- */
 export function resolveTackle(
   tackler: Player,
   carrier: Player,
@@ -175,7 +180,6 @@ export function resolveTackle(
   };
 
   if (roll < 1 / 3) {
-    // Tackler wins ball
     return {
       tackler: { ...cooldownTackler, hasBall: true },
       carrier: { ...carrier, hasBall: false },
@@ -186,7 +190,6 @@ export function resolveTackle(
       },
     };
   } else if (roll < 2 / 3) {
-    // Ball knocked away — random direction, moderate speed
     const angle = Math.random() * Math.PI * 2;
     return {
       tackler: cooldownTackler,
@@ -202,12 +205,7 @@ export function resolveTackle(
       },
     };
   } else {
-    // Neither — carrier keeps ball, tackler on cooldown
-    return {
-      tackler: cooldownTackler,
-      carrier,
-      ball,
-    };
+    return { tackler: cooldownTackler, carrier, ball };
   }
 }
 
@@ -329,12 +327,8 @@ function tickWinger(
       if (dist(player.pos, ball.pos) < 60) {
         return { ...player, action: "keep-distance" };
       }
-      const moved = steerAndMove(
-        player,
-        ball.pos,
-        PLAYER_SPEED * 0.9,
-        allPlayers,
-      );
+      // Direct approach — no steering so players don't get deflected away from ball
+      const moved = directMove(player, ball.pos, PLAYER_SPEED * 0.9);
       return {
         ...player,
         pos: clampToPitch(moved.pos),
@@ -442,12 +436,8 @@ function tickDefence(
     opponentCarrier &&
     dist(player.pos, opponentCarrier.pos) < 150
   ) {
-    const moved = steerAndMove(
-      player,
-      opponentCarrier.pos,
-      PLAYER_SPEED,
-      allPlayers,
-    );
+    // Direct approach to opponent carrier — bypass steering
+    const moved = directMove(player, opponentCarrier.pos, PLAYER_SPEED);
     return {
       ...player,
       pos: clampToPitch(moved.pos),
