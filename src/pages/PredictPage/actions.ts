@@ -67,6 +67,7 @@ export function tickPlayerWithoutBall(
     (p) =>
       p.teamId === player.teamId &&
       p.hasBall &&
+      (p.action === "prep-pass" || p.action === "pass") &&
       dist(p.pos, player.pos) < PASS_RANGE,
   );
   if (teammatePassing) return prepReceive(player, allPlayers);
@@ -92,7 +93,7 @@ function tickWinger(
 ): Player {
   switch (action) {
     case "move-to-shoot":
-      return prepShoot(player, allPlayers);
+      return prepReceive(player, allPlayers);
     case "move-to-space":
       return moveToSpace(player, allPlayers);
     case "move-to-take": {
