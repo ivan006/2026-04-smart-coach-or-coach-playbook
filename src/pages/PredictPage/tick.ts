@@ -25,26 +25,8 @@ export function tickState(state: GameState): GameState {
   const { ball: newBall, homeGoal, awayGoal } = tickBall(ball, players);
   ball = newBall;
 
-  if (homeGoal)
-    return resetAfterGoal(
-      {
-        ...state,
-        teams: teams.map((t) =>
-          t.id === "home" ? { ...t, score: t.score + 1 } : t,
-        ),
-      },
-      "home",
-    );
-  if (awayGoal)
-    return resetAfterGoal(
-      {
-        ...state,
-        teams: teams.map((t) =>
-          t.id === "away" ? { ...t, score: t.score + 1 } : t,
-        ),
-      },
-      "away",
-    );
+  if (homeGoal) return resetAfterGoal(state, "home");
+  if (awayGoal) return resetAfterGoal(state, "away");
 
   // 2. Team possession
   teams = teams.map((t) => ({
