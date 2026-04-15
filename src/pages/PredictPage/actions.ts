@@ -20,6 +20,7 @@ import {
   holdPosition,
   steerAndMove,
   isInShootingPosition,
+  lineOfSightScore,
 } from "./prepActions";
 import { execPass, execShoot } from "./execActions";
 
@@ -27,6 +28,15 @@ export type { TackleResult } from "./execActions";
 export { execTackle, execIntercept, execReceive } from "./execActions";
 
 // ── Ball carrier ──────────────────────────────────────────────────────────────
+
+function hasLineOfSight(
+  from: Player,
+  to: Player,
+  allPlayers: Player[],
+): boolean {
+  const opponents = allPlayers.filter((p) => p.teamId !== from.teamId);
+  return lineOfSightScore(from.pos, to.pos, opponents) > 50;
+}
 
 export function tickPlayerWithBall(
   player: Player,
@@ -39,17 +49,17 @@ export function tickPlayerWithBall(
   // Wingers — shoot when in position, otherwise advance
   if (p.squadRole === "right-wing" || p.squadRole === "left-wing") {
     if (isInShootingPosition(p)) return execShoot(p, ball);
-    // Under pressure — pass to squadmate first
-    if (p.pressure >= HIGH_PRESSURE) {
-      const squadmate = allPlayers.find(
+    // Pass to lowest pressure teammate with clear line of sight
+    const target = allPlayers
+      .filter(
         (t) =>
           t.teamId === p.teamId &&
-          t.squadRole === p.squadRole &&
           t.id !== p.id &&
-          t.pressure < HIGH_PRESSURE,
-      );
-      if (squadmate) return execPass(p, squadmate, ball);
-    }
+          t.pressure < p.pressure &&
+          hasLineOfSight(p, t, allPlayers),
+      )
+      .sort((a, b) => a.pressure - b.pressure)[0];
+    if (target) return execPass(p, target, ball);
     const prepped = prepShoot(p, allPlayers);
     return { player: prepped, ball: { ...ball, pos: prepped.pos } };
   }
@@ -57,11 +67,13 @@ export function tickPlayerWithBall(
   // Relay / defence — pass to worthy winger or hold
   const worthy = worthyWingerSquad(allSquads, p.teamId);
   if (worthy) {
+    const opponents = allPlayers.filter((t) => t.teamId !== p.teamId);
     const target = allPlayers.find(
       (t) =>
         t.teamId === p.teamId &&
         worthy.playerIds.includes(t.id) &&
-        t.pressure < HIGH_PRESSURE,
+        t.pressure < HIGH_PRESSURE &&
+        hasLineOfSight(p, t, allPlayers),
     );
     if (target) return execPass(p, target, ball);
   }

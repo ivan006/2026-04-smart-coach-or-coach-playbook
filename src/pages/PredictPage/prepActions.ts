@@ -215,7 +215,7 @@ export function prepPass(player: Player, allPlayers: Player[]): Player {
  * Returns a score representing how clear the line of sight is between
  * pos and target — higher = clearer. Opponents near the line reduce the score.
  */
-function lineOfSightScore(
+export function lineOfSightScore(
   pos: Vec2,
   target: Vec2,
   opponents: Player[],
@@ -238,7 +238,7 @@ function lineOfSightScore(
     const perpDist = Math.sqrt(
       (opp.pos.x - closestX) ** 2 + (opp.pos.y - closestY) ** 2,
     );
-    if (perpDist < 40) score -= (40 - perpDist) * 3; // penalise blocked lanes
+    if (perpDist < 25) score -= (25 - perpDist) * 3; // penalise blocked lanes
   }
   return Math.max(0, score);
 }
