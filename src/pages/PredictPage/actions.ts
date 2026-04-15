@@ -39,6 +39,13 @@ function hasLineOfSight(
   return lineOfSightScore(from.pos, to.pos, opponents) > 120;
 }
 
+function tangentialDelta(from: number, to: number): number {
+  let diff = to - from;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return diff;
+}
+
 function reward(player: Player, allPlayers: Player[]): number {
   const gt =
     player.teamId === "home"
@@ -190,8 +197,7 @@ function holdDefensiveLine(player: Player, allPlayers: Player[]): Player {
   const currBp = toBipolar(player.pos);
   const newBp = {
     radial: homeBp.radial,
-    tangential:
-      currBp.tangential + (homeBp.tangential - currBp.tangential) * 0.02,
+    tangential: currBp.tangential + tangentialDelta(currBp.tangential, homeBp.tangential) * 0.02,
   };
   const angle = player.teamId === "home" ? 0 : Math.PI;
   return {
@@ -222,19 +228,24 @@ function tickDefence(
           p.teamId === player.teamId && p.squadRole === "defence" && !p.hasBall,
       )
       .sort((a, b) => a.id - b.id);
-    const closest = defenders.reduce((best, p) =>
-      dist(p.pos, carrier.pos) < dist(best.pos, carrier.pos) ? p : best,
-    );
+    const carrierBp = toBipolar(carrier.pos);
+    const closest = defenders.reduce((best, p) => {
+      const pBp = toBipolar(p.pos);
+      const bestBp = toBipolar(best.pos);
+      return Math.abs(tangentialDelta(pBp.tangential, carrierBp.tangential)) <
+        Math.abs(tangentialDelta(bestBp.tangential, carrierBp.tangential))
+        ? p
+        : best;
+    });
 
     if (closest.id === player.id) {
       // Closest defender: lock radial to home, slide tangentially toward carrier's tangential
       const homeBp = toBipolar(player.homePos);
-      const carrierBp = toBipolar(carrier.pos);
       const currBp = toBipolar(player.pos);
       const targetTang = carrierBp.tangential * 0.8;
       const newBp = {
         radial: homeBp.radial,
-        tangential: currBp.tangential + (targetTang - currBp.tangential) * 0.03,
+        tangential: currBp.tangential + tangentialDelta(currBp.tangential, targetTang) * 0.03,
       };
       const angle = Math.atan2(
         carrier.pos.y - player.pos.y,
