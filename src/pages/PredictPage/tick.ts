@@ -1,18 +1,18 @@
-import { GameState, Player, TeamId } from "./types";
+import { GameState, Player } from "./types";
 import { tickBall, dist } from "./physics";
 import { updatePressure } from "./pressure";
 import { updateSquads } from "./squads";
 import { tickPlayerWithBall, tickPlayerWithoutBall } from "./actions";
+import { resolveSeparation } from "./separation";
 import { resetAfterGoal } from "./init";
 import { PLAYER_RADIUS } from "./constants";
 
 export function tickState(state: GameState): GameState {
-  let players = [...state.players.map((p) => ({ ...p }))];
+  let players = state.players.map((p) => ({ ...p }));
   let ball = { ...state.ball };
-  let squads = state.squads.map((s) => ({ ...s }));
   let teams = state.teams.map((t) => ({ ...t }));
 
-  // 1. Tick ball physics
+  // 1. Ball physics
   const { ball: newBall, homeGoal, awayGoal } = tickBall(ball);
   ball = newBall;
 
@@ -37,7 +37,7 @@ export function tickState(state: GameState): GameState {
       "away",
     );
 
-  // 2. Loose ball pickup — nearest player from either team claims it
+  // 2. Loose ball pickup
   if (!ball.loose && ball.ownerId === null) {
     let nearest: Player | null = null;
     let nearestDist = Infinity;
@@ -58,19 +58,19 @@ export function tickState(state: GameState): GameState {
     }
   }
 
-  // 3. Update team possession
+  // 3. Team possession
   teams = teams.map((t) => ({
     ...t,
     hasBall: players.some((p) => p.teamId === t.id && p.hasBall),
   }));
 
-  // 4. Update pressure
+  // 4. Pressure
   players = updatePressure(players);
 
-  // 5. Update squads
-  squads = updateSquads(squads, players, teams);
+  // 5. Squads
+  const squads = updateSquads(state.squads, players, teams);
 
-  // 6. Tick each player
+  // 6. Tick players
   const updatedPlayers: Player[] = [];
   let updatedBall = { ...ball };
 
@@ -83,19 +83,19 @@ export function tickState(state: GameState): GameState {
       const { player: np, ball: nb } = tickPlayerWithBall(
         p,
         players,
-        squad,
+        squads,
         updatedBall,
       );
       updatedPlayers.push(np);
       updatedBall = nb;
     } else {
       updatedPlayers.push(
-        tickPlayerWithoutBall(p, squad, updatedBall, players),
+        tickPlayerWithoutBall(p, squad, updatedBall, players, squads),
       );
     }
   }
 
-  // 7. Ball follows owner if not loose
+  // 7. Ball follows owner
   if (!updatedBall.loose && updatedBall.ownerId) {
     const [tid, pid] = updatedBall.ownerId.split("-");
     const owner = updatedPlayers.find(
@@ -104,8 +104,11 @@ export function tickState(state: GameState): GameState {
     if (owner) updatedBall = { ...updatedBall, pos: { ...owner.pos } };
   }
 
+  // 8. Resolve any remaining overlaps
+  const separatedPlayers = resolveSeparation(updatedPlayers);
+
   return {
-    players: updatedPlayers,
+    players: separatedPlayers,
     squads,
     ball: updatedBall,
     teams,

@@ -6,12 +6,26 @@ export type PlayerAction =
   | "advance"
   | "pass"
   | "shoot"
+  | "receive"
+  | "prep-shoot"
+  | "prep-receive"
+  | "prep-pass"
+  | "tackle"
+  | "keep-distance"
   | "move-to-space"
   | "move-to-take"
-  | "defend"
-  | "tackle";
+  | "defend";
 
-export type SquadAction = "move-to-shoot" | "move-to-space" | "move-to-take";
+export type WingerSquadAction =
+  | "move-to-shoot"
+  | "move-to-space"
+  | "move-to-take";
+export type DefenceSquadAction = "defend-goal";
+export type RelaySquadAction = "choose-worthy-squad" | "keep-position";
+export type SquadAction =
+  | WingerSquadAction
+  | DefenceSquadAction
+  | RelaySquadAction;
 
 export interface Vec2 {
   x: number;
@@ -43,7 +57,7 @@ export interface Ball {
   pos: Vec2;
   vel: Vec2;
   loose: boolean;
-  ownerId: string | null; // "teamId-playerId"
+  ownerId: string | null;
 }
 
 export interface Team {
