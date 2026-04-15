@@ -110,13 +110,21 @@ function squadPressMove(
       deferring: false,
     };
   }
-  // Supporters follow the leader
-  const moved = steerAndMove(player, leader.pos, speed * 0.95, allPlayers);
+  // Supporters target a point behind the leader (away from the target)
+  // so they converge on the leader from behind rather than running alongside
+  const dx = leader.pos.x - target.x;
+  const dy = leader.pos.y - target.y;
+  const d = Math.sqrt(dx * dx + dy * dy) || 1;
+  const behindLeader = clampToPitch({
+    x: leader.pos.x + (dx / d) * 40,
+    y: leader.pos.y + (dy / d) * 40,
+  });
+  const moved = directMove(player, behindLeader, speed * 0.95);
   return {
     ...player,
     pos: clampToPitch(moved.pos),
     angle: moved.angle,
-    action,
+    action: "prep-receive",
     deferring: false,
   };
 }
