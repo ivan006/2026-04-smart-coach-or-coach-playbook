@@ -136,6 +136,7 @@ export default function ActPage() {
   const [showThem, setShowThem] = useState(true);
   const [stagger, setStagger] = useState(false);
   const [compress, setCompress] = useState<"back" | "fwd" | null>(null);
+  const [tiltTop, setTiltTop] = useState(false);
 
   const handleMove = (
     team: "us" | "them",
@@ -151,6 +152,9 @@ export default function ActPage() {
   const applyTransforms = (team: Team, dir: 1 | -1) => {
     const backOrigin = dir === 1 ? 3 : 10;
     const fwdOrigin = dir === 1 ? 10 : 3;
+
+    const tiltOffset = (y: number) =>
+      Math.round(Math.tan((15 * Math.PI) / 180) * (9 - y));
     return team.map((p) => {
       let x = p.x;
       if (compress === "back" && p.id !== 1)
@@ -158,6 +162,7 @@ export default function ActPage() {
       if (compress === "fwd" && p.id !== 1)
         x = Math.round(fwdOrigin + (x - fwdOrigin) * (2 / 3));
       if (stagger && (p.y <= 3 || p.y >= 7)) x = x + dir;
+      if (tiltTop && p.id !== 1) x = x + tiltOffset(p.y) * dir;
       return { ...p, x: Math.max(1, Math.min(COLS, x)) };
     });
   };
@@ -211,6 +216,14 @@ export default function ActPage() {
               onChange={(e) => setCompress(e.target.checked ? "fwd" : null)}
             />
             Compress fwd
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+            <input
+              type="checkbox"
+              checked={tiltTop}
+              onChange={(e) => setTiltTop(e.target.checked)}
+            />
+            Tilt top
           </label>
         </div>
       </div>
