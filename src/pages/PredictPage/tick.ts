@@ -5,46 +5,16 @@ import { updateSquads } from "./squads";
 import {
   tickPlayerWithBall,
   tickPlayerWithoutBall,
-  resolveTackle,
+  execTackle,
+  execIntercept,
+  execReceive,
 } from "./actions";
 import { resolveSeparation } from "./separation";
 import { resetAfterGoal } from "./init";
 import { PLAYER_RADIUS } from "./constants";
 
 const TACKLE_CONTACT = 22;
-const PICKUP_RADIUS = PLAYER_RADIUS * 3; // generous — separation can't block this
-
-function pickupLooseBall(
-  players: Player[],
-  ball: {
-    pos: { x: number; y: number };
-    loose: boolean;
-    ownerId: string | null;
-    vel: { x: number; y: number };
-  },
-) {
-  if (ball.loose || ball.ownerId !== null) return { players, ball };
-  let nearest: Player | null = null;
-  let nearestDist = Infinity;
-  for (const p of players) {
-    const d = dist(p.pos, ball.pos);
-    if (d < nearestDist) {
-      nearestDist = d;
-      nearest = p;
-    }
-  }
-  if (nearest && nearestDist < PICKUP_RADIUS) {
-    return {
-      players: players.map((p) =>
-        p.id === nearest!.id && p.teamId === nearest!.teamId
-          ? { ...p, hasBall: true, action: "intercept" as const }
-          : p,
-      ),
-      ball: { ...ball, ownerId: `${nearest.teamId}-${nearest.id}` },
-    };
-  }
-  return { players, ball };
-}
+const PICKUP_RADIUS = PLAYER_RADIUS * 3;
 
 export function tickState(state: GameState): GameState {
   let players = state.players.map((p) => ({ ...p }));
@@ -88,19 +58,19 @@ export function tickState(state: GameState): GameState {
   // 4. Squads
   const squads = updateSquads(state.squads, players, teams);
 
-  // 5. Tackle cooldown tick-down
+  // 5. Tackle cooldown
   players = players.map((p) =>
     p.tackleCooldown > 0 ? { ...p, tackleCooldown: p.tackleCooldown - 1 } : p,
   );
 
-  // 6. Contact tackle detection
+  // 6. Contact tackle — opponent touches carrier
   const carrier = players.find((p) => p.hasBall);
   if (carrier) {
     for (const p of players) {
       if (p.teamId === carrier.teamId) continue;
       if (p.tackleCooldown > 0) continue;
       if (dist(p.pos, carrier.pos) <= TACKLE_CONTACT) {
-        const result = resolveTackle(p, carrier, ball);
+        const result = execTackle(p, carrier, ball);
         players = players.map((pl) => {
           if (
             pl.id === result.tackler.id &&
@@ -153,16 +123,36 @@ export function tickState(state: GameState): GameState {
     if (owner) updatedBall = { ...updatedBall, pos: { ...owner.pos } };
   }
 
-  // 9. Resolve overlaps
+  // 9. Separation
   const separatedPlayers = resolveSeparation(updatedPlayers);
 
-  // 10. Loose ball pickup — after separation so players pushed close enough can claim ball
-  const picked = pickupLooseBall(separatedPlayers, updatedBall);
+  // 10. Loose ball pickup — after separation
+  let finalPlayers = separatedPlayers;
+  if (!updatedBall.loose && updatedBall.ownerId === null) {
+    let nearest: Player | null = null;
+    let nearestDist = Infinity;
+    for (const p of finalPlayers) {
+      const d = dist(p.pos, updatedBall.pos);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearest = p;
+      }
+    }
+    if (nearest && nearestDist < PICKUP_RADIUS) {
+      const result = execIntercept(nearest, updatedBall);
+      finalPlayers = finalPlayers.map((p) =>
+        p.id === nearest!.id && p.teamId === nearest!.teamId
+          ? result.player
+          : p,
+      );
+      updatedBall = result.ball;
+    }
+  }
 
   return {
-    players: picked.players,
+    players: finalPlayers,
     squads,
-    ball: picked.ball,
+    ball: updatedBall,
     teams,
     tick: state.tick + 1,
   };

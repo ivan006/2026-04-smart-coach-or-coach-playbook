@@ -73,7 +73,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState) {
 
     // Body — flash white for 15 ticks after tackle
     const tackling = p.tackleCooldown > 45;
-    const bodyCol = p.hasBall || tackling ? "#ffffff" : col;
+    const bodyCol = tackling ? "#ffffff" : col;
     ctx.fillStyle = bodyCol;
     ctx.strokeStyle = "rgba(0,0,0,0.5)";
     ctx.lineWidth = 1;
