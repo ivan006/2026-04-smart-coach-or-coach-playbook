@@ -28,13 +28,8 @@ export const SHOOT_RANGE = 160;
 export const PLAYER_SPEED = 1.8;
 export const PLAYER_RADIUS = 10;
 
-export const SQUAD_COLOURS: Record<string, string> = {
-  "home-defence": "#4a9eff",
-  "home-relay": "#ffd700",
-  "home-right-wing": "#ff6b6b",
-  "home-left-wing": "#6bffb8",
-  "away-defence": "#a855f7",
-  "away-relay": "#f97316",
-  "away-right-wing": "#ec4899",
-  "away-left-wing": "#06b6d4",
+// One flat colour per team — all players on a team share it
+export const TEAM_COLOURS: Record<string, string> = {
+  home: "#3b82f6", // blue
+  away: "#ef4444", // red
 };

@@ -16,20 +16,20 @@ import {
   GOAL_BOT,
   PLAYER_RADIUS,
   PRESSURE_RADIUS,
-  SQUAD_COLOURS,
+  TEAM_COLOURS,
 } from "./constants";
 
 export function render(ctx: CanvasRenderingContext2D, state: GameState) {
   ctx.clearRect(0, 0, W, H);
 
-  // ── Pitch stripes ──
+  // Pitch stripes
   const stripeW = PITCH_W / 10;
   for (let i = 0; i < 10; i++) {
     ctx.fillStyle = i % 2 === 0 ? "#226632" : "#287840";
     ctx.fillRect(PITCH_LEFT + i * stripeW, PITCH_TOP, stripeW, PITCH_H);
   }
 
-  // ── Lines ──
+  // Lines
   ctx.strokeStyle = "rgba(255,255,255,0.7)";
   ctx.lineWidth = 2;
   ctx.strokeRect(PITCH_LEFT, PITCH_TOP, PITCH_W, PITCH_H);
@@ -51,16 +51,15 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState) {
   ctx.strokeRect(PITCH_LEFT, CY - 100, 120, 200);
   ctx.strokeRect(PITCH_RIGHT - 120, CY - 100, 120, 200);
 
-  // ── Goals ──
+  // Goals
   ctx.strokeStyle = "rgba(255,255,255,0.9)";
   ctx.lineWidth = 3;
   ctx.strokeRect(PITCH_LEFT - GOAL_W, GOAL_TOP, GOAL_W, GOAL_H);
   ctx.strokeRect(PITCH_RIGHT, GOAL_TOP, GOAL_W, GOAL_H);
 
-  // ── Players ──
+  // Players
   for (const p of state.players) {
-    const colKey = `${p.teamId}-${p.squadRole}`;
-    const col = SQUAD_COLOURS[colKey] ?? "#ffffff";
+    const col = TEAM_COLOURS[p.teamId] ?? "#ffffff";
 
     ctx.save();
     ctx.translate(p.pos.x, p.pos.y);
@@ -106,7 +105,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState) {
     ctx.restore();
 
     // Jersey number
-    ctx.fillStyle = p.hasBall ? "#000" : "#fff";
+    ctx.fillStyle = "#ffffff";
     ctx.font = "bold 9px sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -122,7 +121,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState) {
     }
   }
 
-  // ── Ball (only when loose) ──
+  // Ball (only when loose)
   if (state.ball.loose || !state.players.some((p) => p.hasBall)) {
     ctx.fillStyle = "#ffffff";
     ctx.strokeStyle = "#333";
@@ -133,16 +132,22 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState) {
     ctx.stroke();
   }
 
-  // ── Scoreboard ──
+  // Scoreboard
   const home = state.teams.find((t) => t.id === "home")!;
   const away = state.teams.find((t) => t.id === "away")!;
-  ctx.fillStyle = "rgba(0,0,0,0.6)";
+  ctx.fillStyle = "rgba(0,0,0,0.65)";
   ctx.beginPath();
-  ctx.roundRect(CX - 80, 0, 160, 36, 6);
+  (ctx as any).roundRect?.(CX - 80, 0, 160, 36, 6);
   ctx.fill();
-  ctx.fillStyle = "#fff";
+  ctx.fillStyle = TEAM_COLOURS["home"];
   ctx.font = "bold 16px monospace";
-  ctx.textAlign = "center";
+  ctx.textAlign = "right";
   ctx.textBaseline = "middle";
-  ctx.fillText(`${home.score}  –  ${away.score}`, CX, 18);
+  ctx.fillText(String(home.score), CX - 12, 18);
+  ctx.fillStyle = "#fff";
+  ctx.textAlign = "center";
+  ctx.fillText("–", CX, 18);
+  ctx.fillStyle = TEAM_COLOURS["away"];
+  ctx.textAlign = "left";
+  ctx.fillText(String(away.score), CX + 12, 18);
 }

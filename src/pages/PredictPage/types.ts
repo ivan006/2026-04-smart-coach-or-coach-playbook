@@ -20,7 +20,7 @@ export type WingerSquadAction =
   | "move-to-shoot"
   | "move-to-space"
   | "move-to-take";
-export type DefenceSquadAction = "defend-goal";
+export type DefenceSquadAction = "defend-goal" | "choose-worthy-squad";
 export type RelaySquadAction = "choose-worthy-squad" | "keep-position";
 export type SquadAction =
   | WingerSquadAction
@@ -42,6 +42,7 @@ export interface Player {
   pressure: number;
   action: PlayerAction;
   homePos: Vec2;
+  tackleCooldown: number; // ticks remaining before can tackle again (60 ticks = 1 sec)
 }
 
 export interface Squad {

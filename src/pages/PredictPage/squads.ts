@@ -6,10 +6,6 @@ function wingerAction(squad: Squad, team: { hasBall: boolean }): SquadAction {
   return "move-to-space";
 }
 
-/**
- * Returns the winger squad with the lowest pressure on a given team.
- * Used by relay squad to decide who to feed.
- */
 export function worthyWingerSquad(
   squads: Squad[],
   teamId: string,
@@ -48,11 +44,12 @@ export function updateSquads(
       case "left-wing":
         action = wingerAction({ ...sq, hasBall, pressure }, team);
         break;
-      case "defence":
-        action = "defend-goal";
-        break;
       case "relay":
         action = team.hasBall ? "choose-worthy-squad" : "keep-position";
+        break;
+      case "defence":
+        // If defence won the ball, distribute to worthy winger squad
+        action = hasBall ? "choose-worthy-squad" : "defend-goal";
         break;
     }
 

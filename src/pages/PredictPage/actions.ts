@@ -1,10 +1,12 @@
-import { Player, Squad, Ball, TeamId } from "./types";
+import { Player, Squad, Ball, TeamId, Vec2 } from "./types";
 import { dist, norm, moveToward, clampToPitch } from "./physics";
 import { worthyWingerSquad } from "./squads";
 import { steerAroundPlayers } from "./separation";
 import {
   PITCH_LEFT,
   PITCH_RIGHT,
+  PITCH_TOP,
+  PITCH_BOTTOM,
   PITCH_W,
   CY,
   GOAL_H,
@@ -14,6 +16,10 @@ import {
   PLAYER_SPEED,
   HIGH_PRESSURE,
 } from "./constants";
+
+const TACKLE_RANGE = 18; // px — contact distance to trigger tackle
+const TACKLE_COOLDOWN = 60; // ticks (1 sec at 60fps)
+const KNOCK_POWER = 8; // ball speed when knocked away
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -53,6 +59,41 @@ function bestPassTarget(passer: Player, allPlayers: Player[]): Player | null {
   );
 }
 
+function teammateAboutToPass(player: Player, allPlayers: Player[]): boolean {
+  return allPlayers.some(
+    (p) =>
+      p.teamId === player.teamId &&
+      p.hasBall &&
+      dist(p.pos, player.pos) < PASS_RANGE,
+  );
+}
+
+function findLowPressureSpace(player: Player, allPlayers: Player[]): Vec2 {
+  const opponents = allPlayers.filter((p) => p.teamId !== player.teamId);
+  const candidates: Vec2[] = [];
+  for (let dx = -1; dx <= 2; dx++) {
+    for (let dy = -2; dy <= 2; dy++) {
+      const cx = player.homePos.x + dx * 80;
+      const cy = player.homePos.y + dy * 60;
+      if (cx < PITCH_LEFT + 20 || cx > PITCH_RIGHT - 20) continue;
+      if (cy < PITCH_TOP + 20 || cy > PITCH_BOTTOM - 20) continue;
+      candidates.push({ x: cx, y: cy });
+    }
+  }
+  if (candidates.length === 0) return player.homePos;
+  return candidates.reduce((best, c) => {
+    const minOpp =
+      opponents.length > 0
+        ? Math.min(...opponents.map((o) => dist(c, o.pos)))
+        : 999;
+    const bestOpp =
+      opponents.length > 0
+        ? Math.min(...opponents.map((o) => dist(best, o.pos)))
+        : 999;
+    return minOpp > bestOpp ? c : best;
+  });
+}
+
 function steerAndMove(
   player: Player,
   rawTarget: { x: number; y: number },
@@ -65,6 +106,7 @@ function steerAndMove(
     allPlayers,
     player.id,
     player.teamId,
+    player.squadRole,
   );
   return moveToward(player.pos, steered, speed);
 }
@@ -89,6 +131,86 @@ function doPass(
   };
 }
 
+function passToWorthyWinger(
+  player: Player,
+  allPlayers: Player[],
+  allSquads: Squad[],
+  ball: Ball,
+): { player: Player; ball: Ball } | null {
+  const worthy = worthyWingerSquad(allSquads, player.teamId);
+  if (!worthy) return null;
+  const target = allPlayers.find(
+    (p) =>
+      p.teamId === player.teamId &&
+      worthy.playerIds.includes(p.id) &&
+      p.pressure < HIGH_PRESSURE &&
+      dist(p.pos, player.pos) < PASS_RANGE,
+  );
+  if (!target) return null;
+  return doPass(player, target, ball);
+}
+
+// ── Tackle resolution ─────────────────────────────────────────────────────────
+
+export interface TackleResult {
+  tackler: Player;
+  carrier: Player;
+  ball: Ball;
+}
+
+/**
+ * Called when a player without the ball makes contact with an opponent ball carrier.
+ * Returns updated tackler, carrier, and ball based on random outcome.
+ */
+export function resolveTackle(
+  tackler: Player,
+  carrier: Player,
+  ball: Ball,
+): TackleResult {
+  const roll = Math.random();
+  const cooldownTackler = {
+    ...tackler,
+    tackleCooldown: TACKLE_COOLDOWN,
+    action: "tackle" as const,
+  };
+
+  if (roll < 1 / 3) {
+    // Tackler wins ball
+    return {
+      tackler: { ...cooldownTackler, hasBall: true },
+      carrier: { ...carrier, hasBall: false },
+      ball: {
+        ...ball,
+        ownerId: `${tackler.teamId}-${tackler.id}`,
+        loose: false,
+      },
+    };
+  } else if (roll < 2 / 3) {
+    // Ball knocked away — random direction, moderate speed
+    const angle = Math.random() * Math.PI * 2;
+    return {
+      tackler: cooldownTackler,
+      carrier: { ...carrier, hasBall: false },
+      ball: {
+        ...ball,
+        vel: {
+          x: Math.cos(angle) * KNOCK_POWER,
+          y: Math.sin(angle) * KNOCK_POWER,
+        },
+        loose: true,
+        ownerId: null,
+      },
+    };
+  } else {
+    // Neither — carrier keeps ball, tackler on cooldown
+    return {
+      tackler: cooldownTackler,
+      carrier,
+      ball,
+    };
+  }
+}
+
 // ── Ball carrier ──────────────────────────────────────────────────────────────
 
 export function tickPlayerWithBall(
@@ -111,20 +233,12 @@ export function tickPlayerWithBall(
     };
   }
 
+  if (player.squadRole === "defence" || player.squadRole === "relay") {
+    const result = passToWorthyWinger(player, allPlayers, allSquads, ball);
+    if (result) return result;
+  }
+
   if (player.pressure >= HIGH_PRESSURE) {
-    if (player.squadRole === "relay") {
-      const worthy = worthyWingerSquad(allSquads, player.teamId);
-      if (worthy) {
-        const target = allPlayers.find(
-          (p) =>
-            p.teamId === player.teamId &&
-            worthy.playerIds.includes(p.id) &&
-            p.pressure < HIGH_PRESSURE &&
-            dist(p.pos, player.pos) < PASS_RANGE,
-        );
-        if (target) return doPass(player, target, ball);
-      }
-    }
     const target = bestPassTarget(player, allPlayers);
     if (target) return doPass(player, target, ball);
   }
@@ -151,6 +265,10 @@ export function tickPlayerWithoutBall(
   allPlayers: Player[],
   allSquads: Squad[],
 ): Player {
+  if (teammateAboutToPass(player, allPlayers)) {
+    return { ...player, action: "prep-receive" };
+  }
+
   switch (squad.role) {
     case "right-wing":
     case "left-wing":
@@ -164,7 +282,13 @@ export function tickPlayerWithoutBall(
         allSquads,
       );
     case "defence":
-      return tickDefence(player, ball, allPlayers);
+      return tickDefence(
+        player,
+        squad.action as string,
+        ball,
+        allPlayers,
+        allSquads,
+      );
     default:
       return player;
   }
@@ -192,12 +316,8 @@ function tickWinger(
       };
     }
     case "move-to-space": {
-      const moved = steerAndMove(
-        player,
-        player.homePos,
-        PLAYER_SPEED * 0.8,
-        allPlayers,
-      );
+      const space = findLowPressureSpace(player, allPlayers);
+      const moved = steerAndMove(player, space, PLAYER_SPEED * 0.9, allPlayers);
       return {
         ...player,
         pos: clampToPitch(moved.pos),
@@ -235,7 +355,6 @@ function tickRelay(
   allSquads: Squad[],
 ): Player {
   if (action === "keep-position") {
-    // Hold home position — drift back slowly
     const moved = steerAndMove(
       player,
       player.homePos,
@@ -250,7 +369,6 @@ function tickRelay(
     };
   }
 
-  // choose-worthy-squad — position between ball and worthy winger squad
   const worthy = worthyWingerSquad(allSquads, player.teamId);
   if (!worthy) return player;
 
@@ -282,9 +400,54 @@ function tickRelay(
   };
 }
 
-function tickDefence(player: Player, ball: Ball, allPlayers: Player[]): Player {
-  if (isInOwnThird(player) && dist(player.pos, ball.pos) < 150) {
-    const moved = steerAndMove(player, ball.pos, PLAYER_SPEED, allPlayers);
+function tickDefence(
+  player: Player,
+  action: string,
+  ball: Ball,
+  allPlayers: Player[],
+  allSquads: Squad[],
+): Player {
+  if (action === "choose-worthy-squad") {
+    const worthy = worthyWingerSquad(allSquads, player.teamId);
+    if (worthy) {
+      const wingerPlayers = allPlayers.filter(
+        (p) => p.teamId === player.teamId && worthy.playerIds.includes(p.id),
+      );
+      if (wingerPlayers.length > 0) {
+        const cx =
+          wingerPlayers.reduce((s, p) => s + p.pos.x, 0) / wingerPlayers.length;
+        const cy =
+          wingerPlayers.reduce((s, p) => s + p.pos.y, 0) / wingerPlayers.length;
+        const moved = steerAndMove(
+          player,
+          clampToPitch({ x: cx, y: cy }),
+          PLAYER_SPEED * 0.7,
+          allPlayers,
+        );
+        return {
+          ...player,
+          pos: clampToPitch(moved.pos),
+          angle: moved.angle,
+          action: "advance",
+        };
+      }
+    }
+  }
+
+  const opponentCarrier = allPlayers.find(
+    (p) => p.teamId !== player.teamId && p.hasBall,
+  );
+  if (
+    isInOwnThird(player) &&
+    opponentCarrier &&
+    dist(player.pos, opponentCarrier.pos) < 150
+  ) {
+    const moved = steerAndMove(
+      player,
+      opponentCarrier.pos,
+      PLAYER_SPEED,
+      allPlayers,
+    );
     return {
       ...player,
       pos: clampToPitch(moved.pos),
@@ -292,6 +455,7 @@ function tickDefence(player: Player, ball: Ball, allPlayers: Player[]): Player {
       action: "tackle",
     };
   }
+
   const moved = steerAndMove(
     player,
     player.homePos,

@@ -3,7 +3,7 @@ import { GameState } from "./types";
 import { initState } from "./init";
 import { tickState } from "./tick";
 import { render } from "./render";
-import { W, H, SQUAD_COLOURS } from "./constants";
+import { W, H, TEAM_COLOURS } from "./constants";
 
 const TICK_MS = 1000 / 60;
 
@@ -36,7 +36,6 @@ export default function PredictPage() {
   const togglePause = useCallback(() => {
     pausedRef.current = !pausedRef.current;
   }, []);
-
   const reset = useCallback(() => {
     stateRef.current = initState();
   }, []);
@@ -66,27 +65,14 @@ export default function PredictPage() {
         style={{ maxWidth: "100%", background: "#1a1a2e" }}
       />
 
-      <div className="flex flex-wrap gap-4 text-xs text-white/60 justify-center">
-        <span className="font-semibold text-white/80">Home</span>
-        {(["defence", "relay", "right-wing", "left-wing"] as const).map((r) => (
-          <span key={r}>
-            <span style={{ color: SQUAD_COLOURS[`home-${r}`] }}>■</span> {r} (
-            {r === "defence"
-              ? "1,3,4"
-              : r === "relay"
-                ? "9,11"
-                : r === "right-wing"
-                  ? "7,5,10"
-                  : "2,6,8"}
-            )
-          </span>
-        ))}
-        <span className="font-semibold text-white/80 ml-4">Away</span>
-        {(["defence", "relay", "right-wing", "left-wing"] as const).map((r) => (
-          <span key={r}>
-            <span style={{ color: SQUAD_COLOURS[`away-${r}`] }}>■</span> {r}
-          </span>
-        ))}
+      <div className="flex gap-6 text-xs text-white/60">
+        <span>
+          <span style={{ color: TEAM_COLOURS["home"] }}>■</span> Home
+        </span>
+        <span>
+          <span style={{ color: TEAM_COLOURS["away"] }}>■</span> Away
+        </span>
+        <span className="text-white/30">Ball carrier shown in white</span>
       </div>
     </div>
   );

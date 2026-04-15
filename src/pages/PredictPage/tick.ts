@@ -2,10 +2,16 @@ import { GameState, Player } from "./types";
 import { tickBall, dist } from "./physics";
 import { updatePressure } from "./pressure";
 import { updateSquads } from "./squads";
-import { tickPlayerWithBall, tickPlayerWithoutBall } from "./actions";
+import {
+  tickPlayerWithBall,
+  tickPlayerWithoutBall,
+  resolveTackle,
+} from "./actions";
 import { resolveSeparation } from "./separation";
 import { resetAfterGoal } from "./init";
 import { PLAYER_RADIUS } from "./constants";
+
+const TACKLE_CONTACT = 18; // px
 
 export function tickState(state: GameState): GameState {
   let players = state.players.map((p) => ({ ...p }));
@@ -70,7 +76,40 @@ export function tickState(state: GameState): GameState {
   // 5. Squads
   const squads = updateSquads(state.squads, players, teams);
 
-  // 6. Tick players
+  // 6. Tackle cooldown tick-down
+  players = players.map((p) =>
+    p.tackleCooldown > 0 ? { ...p, tackleCooldown: p.tackleCooldown - 1 } : p,
+  );
+
+  // 7. Contact tackle detection — any player touching opponent ball carrier triggers tackle
+  const carrier = players.find((p) => p.hasBall);
+  if (carrier) {
+    for (const p of players) {
+      if (p.teamId === carrier.teamId) continue; // skip teammates
+      if (p.tackleCooldown > 0) continue; // on cooldown
+      if (dist(p.pos, carrier.pos) <= TACKLE_CONTACT) {
+        const result = resolveTackle(p, carrier, ball);
+        // Apply tackle result back into players array
+        players = players.map((pl) => {
+          if (
+            pl.id === result.tackler.id &&
+            pl.teamId === result.tackler.teamId
+          )
+            return result.tackler;
+          if (
+            pl.id === result.carrier.id &&
+            pl.teamId === result.carrier.teamId
+          )
+            return result.carrier;
+          return pl;
+        });
+        ball = result.ball;
+        break; // one tackle per tick
+      }
+    }
+  }
+
+  // 8. Tick each player
   const updatedPlayers: Player[] = [];
   let updatedBall = { ...ball };
 
@@ -95,7 +134,7 @@ export function tickState(state: GameState): GameState {
     }
   }
 
-  // 7. Ball follows owner
+  // 9. Ball follows owner
   if (!updatedBall.loose && updatedBall.ownerId) {
     const [tid, pid] = updatedBall.ownerId.split("-");
     const owner = updatedPlayers.find(
@@ -104,7 +143,7 @@ export function tickState(state: GameState): GameState {
     if (owner) updatedBall = { ...updatedBall, pos: { ...owner.pos } };
   }
 
-  // 8. Resolve any remaining overlaps
+  // 10. Resolve overlaps
   const separatedPlayers = resolveSeparation(updatedPlayers);
 
   return {
