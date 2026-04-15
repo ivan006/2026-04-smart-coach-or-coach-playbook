@@ -94,6 +94,9 @@ export function resolveSeparation(players: Player[]): Player[] {
       const bothTackling =
         (a.action === "tackle" || a.action === "prep-tackle") &&
         (b.action === "tackle" || b.action === "prep-tackle");
+      const aDefending = a.action === "defend" && a.squadRole === "defence";
+      const bDefending = b.action === "defend" && b.squadRole === "defence";
+      if (aDefending || bDefending) continue;
       const minDist =
         isTeammate && !bothTackling ? TEAMMATE_MIN_DIST : OPPONENT_MIN_DIST;
 

@@ -113,9 +113,10 @@ export function tickState(state: GameState): GameState {
   // 9. Separation
   const separatedPlayers = resolveSeparation(updatedPlayers);
 
-  // 9b. Lock defenders to home radial position in bipolar coords
+  // 9b. Restore defender radial after separation — only tangential movement allowed
   const restoredPlayers = separatedPlayers.map((p) => {
-    if (p.squadRole !== "defence" || p.hasBall) return p;
+    if (p.squadRole !== "defence" || p.hasBall || p.action !== "defend")
+      return p;
     const homeBp = toBipolar(p.homePos);
     const currBp = toBipolar(p.pos);
     return {

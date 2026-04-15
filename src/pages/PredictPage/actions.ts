@@ -191,7 +191,7 @@ function holdDefensiveLine(player: Player, allPlayers: Player[]): Player {
   const newBp = {
     radial: homeBp.radial,
     tangential:
-      currBp.tangential + (homeBp.tangential - currBp.tangential) * 0.05,
+      currBp.tangential + (homeBp.tangential - currBp.tangential) * 0.02,
   };
   const angle = player.teamId === "home" ? 0 : Math.PI;
   return {
@@ -234,7 +234,7 @@ function tickDefence(
       const targetTang = carrierBp.tangential * 0.8;
       const newBp = {
         radial: homeBp.radial,
-        tangential: currBp.tangential + (targetTang - currBp.tangential) * 0.1,
+        tangential: currBp.tangential + (targetTang - currBp.tangential) * 0.03,
       };
       const angle = Math.atan2(
         carrier.pos.y - player.pos.y,
