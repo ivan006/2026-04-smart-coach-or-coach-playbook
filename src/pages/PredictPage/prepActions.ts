@@ -16,6 +16,7 @@ import {
 
 const SUPPORT_OFFSET = 55;
 const DEFER_MARGIN = 60;
+const WINGER_Y_SPREAD = 200;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -259,7 +260,25 @@ export function prepReceive(player: Player, allPlayers: Player[]): Player {
     (p) => p.teamId === player.teamId && p.hasBall,
   );
   if (!carrier) {
-    const space = findLowPressureSpace(player, allPlayers);
+    let space = findLowPressureSpace(player, allPlayers);
+    if (player.squadRole === "right-wing" || player.squadRole === "left-wing") {
+      const squadMates = allPlayers
+        .filter(
+          (other) =>
+            other.teamId === player.teamId &&
+            other.squadRole === player.squadRole,
+        )
+        .sort((a, b) => a.homePos.y - b.homePos.y);
+      const slotIndex = squadMates.findIndex((other) => other.id === player.id);
+      if (slotIndex !== -1 && squadMates.length >= 2) {
+        const avgHomeY =
+          squadMates.reduce((sum, other) => sum + other.homePos.y, 0) /
+          squadMates.length;
+        const offset =
+          (slotIndex - (squadMates.length - 1) / 2) * WINGER_Y_SPREAD;
+        space = clampToPitch({ x: space.x, y: avgHomeY + offset });
+      }
+    }
     const moved = steerAndMove(player, space, PLAYER_SPEED * 0.9, allPlayers);
     return {
       ...player,
@@ -366,7 +385,30 @@ export function prepReceive(player: Player, allPlayers: Player[]): Player {
     return scoreC > scoreBest ? c : bestC;
   });
 
-  const moved = steerAndMove(player, best, PLAYER_SPEED * 0.9, allPlayers);
+  let spreadTarget = best;
+  if (player.squadRole === "right-wing" || player.squadRole === "left-wing") {
+    const squadMates = allPlayers
+      .filter(
+        (other) =>
+          other.teamId === player.teamId && other.squadRole === player.squadRole,
+      )
+      .sort((a, b) => a.homePos.y - b.homePos.y);
+    const slotIndex = squadMates.findIndex((other) => other.id === player.id);
+    if (slotIndex !== -1 && squadMates.length >= 2) {
+      const avgHomeY =
+        squadMates.reduce((sum, other) => sum + other.homePos.y, 0) /
+        squadMates.length;
+      const offset =
+        (slotIndex - (squadMates.length - 1) / 2) * WINGER_Y_SPREAD;
+      spreadTarget = clampToPitch({ x: best.x, y: avgHomeY + offset });
+    }
+  }
+  const moved = steerAndMove(
+    player,
+    spreadTarget,
+    PLAYER_SPEED * 0.9,
+    allPlayers,
+  );
   return {
     ...player,
     pos: clampToPitch(moved.pos),
@@ -478,7 +520,24 @@ export function prepIntercept(
 // ── Move to space (no ball) ───────────────────────────────────────────────────
 
 export function moveToSpace(player: Player, allPlayers: Player[]): Player {
-  const space = findLowPressureSpace(player, allPlayers);
+  let space = findLowPressureSpace(player, allPlayers);
+  if (player.squadRole === "right-wing" || player.squadRole === "left-wing") {
+    const squadMates = allPlayers
+      .filter(
+        (other) =>
+          other.teamId === player.teamId && other.squadRole === player.squadRole,
+      )
+      .sort((a, b) => a.homePos.y - b.homePos.y);
+    const slotIndex = squadMates.findIndex((other) => other.id === player.id);
+    if (slotIndex !== -1 && squadMates.length >= 2) {
+      const avgHomeY =
+        squadMates.reduce((sum, other) => sum + other.homePos.y, 0) /
+        squadMates.length;
+      const offset =
+        (slotIndex - (squadMates.length - 1) / 2) * WINGER_Y_SPREAD;
+      space = clampToPitch({ x: space.x, y: avgHomeY + offset });
+    }
+  }
   const moved = steerAndMove(player, space, PLAYER_SPEED * 0.9, allPlayers);
   return {
     ...player,
