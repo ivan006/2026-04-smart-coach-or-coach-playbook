@@ -46,6 +46,7 @@ export interface Player {
   action: PlayerAction;
   homePos: Vec2;
   tackleCooldown: number;
+  deferring: boolean;
   targetSquadRole?: SquadRole; // cached worthy squad target for relay/defence
 }
 

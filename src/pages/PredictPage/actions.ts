@@ -19,6 +19,7 @@ import {
 
 const TACKLE_COOLDOWN = 60;
 const KNOCK_POWER = 8;
+const DEFER_MARGIN = 60; // another squad must be this much closer before deferring
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -26,13 +27,6 @@ function goalTarget(teamId: TeamId) {
   return teamId === "home"
     ? { x: PITCH_RIGHT, y: CY }
     : { x: PITCH_LEFT, y: CY };
-}
-
-function isInOwnThird(player: Player): boolean {
-  const thirdW = PITCH_W / 3;
-  return player.teamId === "home"
-    ? player.pos.x < PITCH_LEFT + thirdW
-    : player.pos.x > PITCH_RIGHT - thirdW;
 }
 
 function isNearGoal(player: Player): boolean {
@@ -93,7 +87,6 @@ function findLowPressureSpace(player: Player, allPlayers: Player[]): Vec2 {
   });
 }
 
-/** Normal steered movement — avoids other players */
 function steerAndMove(
   player: Player,
   rawTarget: { x: number; y: number },
@@ -111,7 +104,6 @@ function steerAndMove(
   return moveToward(player.pos, steered, speed);
 }
 
-/** Direct movement toward target — bypasses steering, used when chasing the ball */
 function directMove(
   player: Player,
   target: { x: number; y: number },
@@ -146,12 +138,7 @@ function passToWorthyWinger(
   allSquads: Squad[],
   ball: Ball,
 ): { player: Player; ball: Ball } | null {
-  const worthy = worthyWingerSquad(
-    allSquads,
-    player.teamId,
-    undefined,
-    player.targetSquadRole,
-  );
+  const worthy = worthyWingerSquad(allSquads, player.teamId);
   if (!worthy) return null;
   const target = allPlayers.find(
     (p) =>
@@ -162,6 +149,33 @@ function passToWorthyWinger(
   );
   if (!target) return null;
   return doPass(player, target, ball);
+}
+
+/**
+ * Decide whether this player should defer to a closer squad.
+ * Uses sticky deferring flag — only commits to defer if another squad
+ * is clearly closer (DEFER_MARGIN). Clears defer if team regains ball.
+ */
+function shouldDefer(
+  player: Player,
+  allPlayers: Player[],
+  targetPos: Vec2,
+): boolean {
+  // If already deferring, keep deferring (sticky) — only re-evaluate if we become closest
+  const myDist = dist(player.pos, targetPos);
+  const closestOtherSquadDist = allPlayers
+    .filter(
+      (p) => p.teamId === player.teamId && p.squadRole !== player.squadRole,
+    )
+    .reduce((best, p) => Math.min(best, dist(p.pos, targetPos)), Infinity);
+
+  if (player.deferring) {
+    // Stop deferring only if we become the closest squad
+    return closestOtherSquadDist < myDist;
+  } else {
+    // Start deferring only if another squad is clearly closer
+    return closestOtherSquadDist < myDist - DEFER_MARGIN;
+  }
 }
 
 // ── Tackle resolution ─────────────────────────────────────────────────────────
@@ -182,6 +196,7 @@ export function resolveTackle(
     ...tackler,
     tackleCooldown: TACKLE_COOLDOWN,
     action: "tackle" as const,
+    deferring: false,
   };
 
   if (roll < 1 / 3) {
@@ -222,11 +237,14 @@ export function tickPlayerWithBall(
   allSquads: Squad[],
   ball: Ball,
 ): { player: Player; ball: Ball } {
-  if (isNearGoal(player)) {
-    const gt = goalTarget(player.teamId);
-    const n = norm({ x: gt.x - player.pos.x, y: gt.y - player.pos.y });
+  // Clear deferring when player gets ball
+  const p = { ...player, deferring: false };
+
+  if (isNearGoal(p)) {
+    const gt = goalTarget(p.teamId);
+    const n = norm({ x: gt.x - p.pos.x, y: gt.y - p.pos.y });
     return {
-      player: { ...player, hasBall: false, action: "shoot" },
+      player: { ...p, hasBall: false, action: "shoot" },
       ball: {
         ...ball,
         vel: { x: n.x * PASS_POWER, y: n.y * PASS_POWER },
@@ -236,21 +254,21 @@ export function tickPlayerWithBall(
     };
   }
 
-  if (player.squadRole === "defence" || player.squadRole === "relay") {
-    const result = passToWorthyWinger(player, allPlayers, allSquads, ball);
+  if (p.squadRole === "defence" || p.squadRole === "relay") {
+    const result = passToWorthyWinger(p, allPlayers, allSquads, ball);
     if (result) return result;
   }
 
-  if (player.pressure >= HIGH_PRESSURE) {
-    const target = bestPassTarget(player, allPlayers);
-    if (target) return doPass(player, target, ball);
+  if (p.pressure >= HIGH_PRESSURE) {
+    const target = bestPassTarget(p, allPlayers);
+    if (target) return doPass(p, target, ball);
   }
 
-  const gt = goalTarget(player.teamId);
-  const moved = steerAndMove(player, gt, PLAYER_SPEED, allPlayers);
+  const gt = goalTarget(p.teamId);
+  const moved = steerAndMove(p, gt, PLAYER_SPEED, allPlayers);
   return {
     player: {
-      ...player,
+      ...p,
       pos: clampToPitch(moved.pos),
       angle: moved.angle,
       action: "advance",
@@ -269,7 +287,7 @@ export function tickPlayerWithoutBall(
   allSquads: Squad[],
 ): Player {
   if (teammateAboutToPass(player, allPlayers)) {
-    return { ...player, action: "prep-receive" };
+    return { ...player, action: "prep-receive", deferring: false };
   }
 
   switch (squad.role) {
@@ -316,6 +334,7 @@ function tickWinger(
         pos: clampToPitch(moved.pos),
         angle: moved.angle,
         action: "advance",
+        deferring: false,
       };
     }
     case "move-to-space": {
@@ -326,40 +345,39 @@ function tickWinger(
         pos: clampToPitch(moved.pos),
         angle: moved.angle,
         action: "move-to-space",
+        deferring: false,
       };
     }
     case "move-to-take": {
       const isLoose = ball.ownerId === null;
-      if (isLoose) {
-        const myDist = dist(player.pos, ball.pos);
-        const closerTeammate = allPlayers.some(
-          (p) =>
-            p.teamId === player.teamId &&
-            p.id !== player.id &&
-            dist(p.pos, ball.pos) < myDist,
+      const target = isLoose
+        ? ball.pos
+        : (allPlayers.find((p) => p.hasBall)?.pos ?? ball.pos);
+      const defer = shouldDefer(player, allPlayers, target);
+
+      if (defer) {
+        const moved = steerAndMove(
+          player,
+          player.homePos,
+          PLAYER_SPEED * 0.5,
+          allPlayers,
         );
-        if (closerTeammate) {
-          // Leave it — hold position
-          const moved = steerAndMove(
-            player,
-            player.homePos,
-            PLAYER_SPEED * 0.5,
-            allPlayers,
-          );
-          return {
-            ...player,
-            pos: clampToPitch(moved.pos),
-            angle: moved.angle,
-            action: "hold",
-          };
-        }
+        return {
+          ...player,
+          pos: clampToPitch(moved.pos),
+          angle: moved.angle,
+          action: "hold",
+          deferring: true,
+        };
       }
-      const moved = directMove(player, ball.pos, PLAYER_SPEED * 0.9);
+
+      const moved = directMove(player, target, PLAYER_SPEED * 0.9);
       return {
         ...player,
         pos: clampToPitch(moved.pos),
         angle: moved.angle,
         action: isLoose ? "prep-intercept" : "prep-tackle",
+        deferring: false,
       };
     }
     default:
@@ -375,8 +393,6 @@ function tickRelay(
   allSquads: Squad[],
 ): Player {
   if (action === "keep-position") {
-    if (dist(player.pos, player.homePos) < 8)
-      return { ...player, action: "hold" };
     const moved = steerAndMove(
       player,
       player.homePos,
@@ -388,15 +404,11 @@ function tickRelay(
       pos: clampToPitch(moved.pos),
       angle: moved.angle,
       action: "hold",
+      deferring: false,
     };
   }
 
-  const worthy = worthyWingerSquad(
-    allSquads,
-    player.teamId,
-    undefined,
-    player.targetSquadRole,
-  );
+  const worthy = worthyWingerSquad(allSquads, player.teamId);
   if (!worthy) return player;
 
   const wingerPlayers = allPlayers.filter(
@@ -413,8 +425,6 @@ function tickRelay(
     y: (ball.pos.y + cy) / 2,
   });
 
-  if (dist(player.pos, rawTarget) < 8)
-    return { ...player, action: "move-to-space" };
   const moved = steerAndMove(
     player,
     rawTarget,
@@ -426,7 +436,7 @@ function tickRelay(
     pos: clampToPitch(moved.pos),
     angle: moved.angle,
     action: "move-to-space",
-    targetSquadRole: worthy.role,
+    deferring: false,
   };
 }
 
@@ -438,12 +448,7 @@ function tickDefence(
   allSquads: Squad[],
 ): Player {
   if (action === "choose-worthy-squad") {
-    const worthy = worthyWingerSquad(
-      allSquads,
-      player.teamId,
-      undefined,
-      player.targetSquadRole,
-    );
+    const worthy = worthyWingerSquad(allSquads, player.teamId);
     if (worthy) {
       const wingerPlayers = allPlayers.filter(
         (p) => p.teamId === player.teamId && worthy.playerIds.includes(p.id),
@@ -464,34 +469,19 @@ function tickDefence(
           pos: clampToPitch(moved.pos),
           angle: moved.angle,
           action: "advance",
-          targetSquadRole: worthy.role,
+          deferring: false,
         };
       }
     }
   }
 
+  // Press opponent carrier
   const opponentCarrier = allPlayers.find(
     (p) => p.teamId !== player.teamId && p.hasBall,
   );
   if (opponentCarrier) {
-    const moved = directMove(player, opponentCarrier.pos, PLAYER_SPEED);
-    return {
-      ...player,
-      pos: clampToPitch(moved.pos),
-      angle: moved.angle,
-      action: "prep-tackle",
-    };
-  }
-
-  if (ball.ownerId === null) {
-    const myDist = dist(player.pos, ball.pos);
-    const closerTeammate = allPlayers.some(
-      (p) =>
-        p.teamId === player.teamId &&
-        p.id !== player.id &&
-        dist(p.pos, ball.pos) < myDist,
-    );
-    if (closerTeammate) {
+    const defer = shouldDefer(player, allPlayers, opponentCarrier.pos);
+    if (defer) {
       const moved = steerAndMove(
         player,
         player.homePos,
@@ -503,6 +493,35 @@ function tickDefence(
         pos: clampToPitch(moved.pos),
         angle: moved.angle,
         action: "hold",
+        deferring: true,
+      };
+    }
+    const moved = directMove(player, opponentCarrier.pos, PLAYER_SPEED);
+    return {
+      ...player,
+      pos: clampToPitch(moved.pos),
+      angle: moved.angle,
+      action: "prep-tackle",
+      deferring: false,
+    };
+  }
+
+  // Loose ball
+  if (ball.ownerId === null) {
+    const defer = shouldDefer(player, allPlayers, ball.pos);
+    if (defer) {
+      const moved = steerAndMove(
+        player,
+        player.homePos,
+        PLAYER_SPEED * 0.5,
+        allPlayers,
+      );
+      return {
+        ...player,
+        pos: clampToPitch(moved.pos),
+        angle: moved.angle,
+        action: "hold",
+        deferring: true,
       };
     }
     const moved = directMove(player, ball.pos, PLAYER_SPEED);
@@ -511,11 +530,10 @@ function tickDefence(
       pos: clampToPitch(moved.pos),
       angle: moved.angle,
       action: "prep-intercept",
+      deferring: false,
     };
   }
 
-  if (dist(player.pos, player.homePos) < 8)
-    return { ...player, action: "defend" };
   const moved = steerAndMove(
     player,
     player.homePos,
@@ -527,5 +545,6 @@ function tickDefence(
     pos: clampToPitch(moved.pos),
     angle: moved.angle,
     action: "defend",
+    deferring: false,
   };
 }
