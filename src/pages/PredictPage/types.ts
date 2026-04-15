@@ -35,6 +35,12 @@ export interface Vec2 {
   y: number;
 }
 
+/** Bipolar coordinate — radial = distance from own goal, tangential = offset from center line */
+export interface BipolarPos {
+  radial: number;
+  tangential: number;
+}
+
 export interface Player {
   id: number;
   teamId: TeamId;

@@ -181,17 +181,96 @@ function findLowPressureSpace(player: Player, allPlayers: Player[]): Vec2 {
 
 export function prepShoot(player: Player, allPlayers: Player[]): Player {
   const gt = goalTarget(player.teamId);
-  // Give opponents a wide berth when advancing — treat them like teammates for steering
-  const wideAllPlayers = allPlayers.map((p) =>
-    p.teamId !== player.teamId
-      ? { ...p, teamId: player.teamId as typeof p.teamId }
-      : p,
+  const opponents = allPlayers.filter((p) => p.teamId !== player.teamId);
+  const squadmates = allPlayers.filter(
+    (p) =>
+      p.teamId === player.teamId &&
+      p.squadRole === player.squadRole &&
+      p.id !== player.id,
   );
+
+  // Radial/tangential axes toward goal
+  const dx = gt.x - player.pos.x;
+  const dy = gt.y - player.pos.y;
+  const d = Math.sqrt(dx * dx + dy * dy) || 1;
+  const nx = dx / d;
+  const ny = dy / d;
+  const px = -ny;
+  const py = nx;
+
+  // Sample candidates in forward cone
+  const candidates: Vec2[] = [];
+  for (let forward = 60; forward <= 300; forward += 60) {
+    for (let lateral = -200; lateral <= 200; lateral += 80) {
+      const cx = player.pos.x + nx * forward + px * lateral;
+      const cy = player.pos.y + ny * forward + py * lateral;
+      if (cx < PITCH_LEFT + 20 || cx > PITCH_RIGHT - 20) continue;
+      if (cy < PITCH_TOP + 20 || cy > PITCH_BOTTOM - 20) continue;
+      candidates.push({ x: cx, y: cy });
+    }
+  }
+
+  if (candidates.length === 0) {
+    const moved = steerAndMove(
+      { ...player, action: "prep-shoot" },
+      gt,
+      PLAYER_SPEED,
+      allPlayers,
+    );
+    return {
+      ...player,
+      pos: clampToPitch(moved.pos),
+      angle: moved.angle,
+      action: "prep-shoot",
+    };
+  }
+
+  const best = candidates.reduce((bestC, c) => {
+    const tangDist =
+      squadmates.length > 0
+        ? Math.min(
+            ...squadmates.map((s) =>
+              Math.abs((c.x - s.pos.x) * px + (c.y - s.pos.y) * py),
+            ),
+          )
+        : 999;
+    const tangDistB =
+      squadmates.length > 0
+        ? Math.min(
+            ...squadmates.map((s) =>
+              Math.abs((bestC.x - s.pos.x) * px + (bestC.y - s.pos.y) * py),
+            ),
+          )
+        : 999;
+    const oppTang =
+      opponents.length > 0
+        ? Math.min(
+            ...opponents.map((o) =>
+              Math.abs((c.x - o.pos.x) * px + (c.y - o.pos.y) * py),
+            ),
+          )
+        : 999;
+    const oppTangB =
+      opponents.length > 0
+        ? Math.min(
+            ...opponents.map((o) =>
+              Math.abs((bestC.x - o.pos.x) * px + (bestC.y - o.pos.y) * py),
+            ),
+          )
+        : 999;
+    const radial = (c.x - player.pos.x) * nx + (c.y - player.pos.y) * ny;
+    const radialB =
+      (bestC.x - player.pos.x) * nx + (bestC.y - player.pos.y) * ny;
+    const scoreC = tangDist * 2 + oppTang + radial;
+    const scoreBest = tangDistB * 2 + oppTangB + radialB;
+    return scoreC > scoreBest ? c : bestC;
+  });
+
   const moved = steerAndMove(
     { ...player, action: "prep-shoot" },
-    gt,
+    best,
     PLAYER_SPEED,
-    wideAllPlayers,
+    allPlayers,
   );
   return {
     ...player,
@@ -344,7 +423,6 @@ export function prepReceive(player: Player, allPlayers: Player[]): Player {
         : 999;
     const losC = lineOfSightScore(c, carrier.pos, opponents);
     const losBest = lineOfSightScore(bestC, carrier.pos, opponents);
-    // Tangential separation weighted 2x radial separation
     const tangC =
       squadmates.length > 0
         ? Math.min(...squadmates.map((s) => tangentialDist(c, s.pos)))
@@ -353,16 +431,19 @@ export function prepReceive(player: Player, allPlayers: Player[]): Player {
       squadmates.length > 0
         ? Math.min(...squadmates.map((s) => tangentialDist(bestC, s.pos)))
         : 999;
-    const radC =
-      squadmates.length > 0
-        ? Math.min(...squadmates.map((s) => radialDist(c, s.pos)))
+    const oppTangC =
+      opponents.length > 0
+        ? Math.min(...opponents.map((o) => tangentialDist(c, o.pos)))
         : 999;
-    const radB =
-      squadmates.length > 0
-        ? Math.min(...squadmates.map((s) => radialDist(bestC, s.pos)))
+    const oppTangB =
+      opponents.length > 0
+        ? Math.min(...opponents.map((o) => tangentialDist(bestC, o.pos)))
         : 999;
-    const scoreC = minOpp + losC + tangC * 2 + radC;
-    const scoreBest = bestMinOpp + losBest + tangB * 2 + radB;
+    const radialC = (c.x - carrier.pos.x) * nx + (c.y - carrier.pos.y) * ny;
+    const radialB =
+      (bestC.x - carrier.pos.x) * nx + (bestC.y - carrier.pos.y) * ny;
+    const scoreC = losC + tangC * 2 + oppTangC + radialC;
+    const scoreBest = losBest + tangB * 2 + oppTangB + radialB;
     return scoreC > scoreBest ? c : bestC;
   });
 

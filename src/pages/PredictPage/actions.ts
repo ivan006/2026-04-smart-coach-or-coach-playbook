@@ -1,9 +1,9 @@
 import { Player, Squad, Ball } from "./types";
 import { dist, clampToPitch } from "./physics";
+import { toBipolar, fromBipolar } from "./bipolar";
 import { worthyWingerSquad } from "./squads";
 import {
   PASS_RANGE,
-  RECEIVE_RANGE,
   PLAYER_SPEED,
   HIGH_PRESSURE,
   PITCH_LEFT,
@@ -36,7 +36,17 @@ function hasLineOfSight(
   allPlayers: Player[],
 ): boolean {
   const opponents = allPlayers.filter((p) => p.teamId !== from.teamId);
-  return lineOfSightScore(from.pos, to.pos, opponents) > 80;
+  return lineOfSightScore(from.pos, to.pos, opponents) > 120;
+}
+
+function reward(player: Player, allPlayers: Player[]): number {
+  const gt =
+    player.teamId === "home"
+      ? { x: PITCH_RIGHT, y: CY }
+      : { x: PITCH_LEFT, y: CY };
+  const radialCloseness = 1 - dist(player.pos, gt) / (PITCH_RIGHT - PITCH_LEFT);
+  const freedom = 1 - Math.min(player.pressure / 5, 1);
+  return radialCloseness + freedom;
 }
 
 export function tickPlayerWithBall(
@@ -51,16 +61,17 @@ export function tickPlayerWithBall(
   if (p.squadRole === "right-wing" || p.squadRole === "left-wing") {
     if (isInShootingPosition(p)) return execShoot(p, ball);
     // Pass to lowest pressure teammate with clear line of sight
+    const selfReward = reward(p, allPlayers);
     const target = allPlayers
       .filter(
         (t) =>
           t.teamId === p.teamId &&
           t.squadRole === p.squadRole &&
           t.id !== p.id &&
-          t.pressure < p.pressure &&
+          reward(t, allPlayers) > selfReward &&
           hasLineOfSight(p, t, allPlayers),
       )
-      .sort((a, b) => a.pressure - b.pressure)[0];
+      .sort((a, b) => reward(b, allPlayers) - reward(a, allPlayers))[0];
     if (target) return execPass(p, target, ball);
     const prepped = prepShoot(p, allPlayers);
     return { player: prepped, ball: { ...ball, pos: prepped.pos } };
@@ -69,14 +80,14 @@ export function tickPlayerWithBall(
   // Relay / defence — pass to worthy winger or hold
   const worthy = worthyWingerSquad(allSquads, p.teamId);
   if (worthy) {
-    const opponents = allPlayers.filter((t) => t.teamId !== p.teamId);
-    const target = allPlayers.find(
-      (t) =>
-        t.teamId === p.teamId &&
-        worthy.playerIds.includes(t.id) &&
-        t.pressure < HIGH_PRESSURE &&
-        hasLineOfSight(p, t, allPlayers),
-    );
+    const target = allPlayers
+      .filter(
+        (t) =>
+          t.teamId === p.teamId &&
+          worthy.playerIds.includes(t.id) &&
+          hasLineOfSight(p, t, allPlayers),
+      )
+      .sort((a, b) => reward(b, allPlayers) - reward(a, allPlayers))[0];
     if (target) return execPass(p, target, ball);
   }
 
@@ -173,13 +184,32 @@ function tickRelay(
   return holdPosition(player, allPlayers);
 }
 
+function holdDefensiveLine(player: Player, allPlayers: Player[]): Player {
+  // In bipolar coords: radial is locked to home radial, tangential drifts back to home
+  const homeBp = toBipolar(player.homePos, player.teamId);
+  const currBp = toBipolar(player.pos, player.teamId);
+  const newBp = {
+    radial: homeBp.radial,
+    tangential:
+      currBp.tangential + (homeBp.tangential - currBp.tangential) * 0.05,
+  };
+  const angle = player.teamId === "home" ? 0 : Math.PI;
+  return {
+    ...player,
+    pos: clampToPitch(fromBipolar(newBp, player.teamId)),
+    angle,
+    action: "defend",
+  };
+}
+
 function tickDefence(
   player: Player,
   action: string,
   ball: Ball,
   allPlayers: Player[],
 ): Player {
-  if (action === "choose-worthy-squad") return holdPosition(player, allPlayers);
+  if (action === "choose-worthy-squad")
+    return holdDefensiveLine(player, allPlayers);
 
   const carrier = allPlayers.find(
     (p) => p.teamId !== player.teamId && p.hasBall,
@@ -197,28 +227,31 @@ function tickDefence(
     );
 
     if (closest.id === player.id) {
-      const targetY = CY + (carrier.pos.y - CY) * 0.8;
-      const blockPos = clampToPitch({ x: player.pos.x, y: targetY });
-      const moved = steerAndMove(
-        player,
-        blockPos,
-        PLAYER_SPEED * 0.3,
-        allPlayers,
-      );
+      // Closest defender: lock radial to home, slide tangentially toward carrier's tangential
+      const homeBp = toBipolar(player.homePos, player.teamId);
+      const carrierBp = toBipolar(carrier.pos, player.teamId);
+      const currBp = toBipolar(player.pos, player.teamId);
+      const targetTang = CY + carrierBp.tangential * 0.8; // biased toward center
+      const newBp = {
+        radial: homeBp.radial,
+        tangential:
+          currBp.tangential + (targetTang - CY - currBp.tangential) * 0.1,
+      };
       const angle = Math.atan2(
         carrier.pos.y - player.pos.y,
         carrier.pos.x - player.pos.x,
       );
       return {
         ...player,
-        pos: clampToPitch(moved.pos),
+        pos: clampToPitch(fromBipolar(newBp, player.teamId)),
         angle,
         action: "defend",
       };
     }
-    return holdPosition(player, allPlayers);
+
+    return holdDefensiveLine(player, allPlayers);
   }
 
   if (ball.ownerId === null) return prepIntercept(player, allPlayers, ball.pos);
-  return holdPosition(player, allPlayers);
+  return holdDefensiveLine(player, allPlayers);
 }

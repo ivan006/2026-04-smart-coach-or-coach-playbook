@@ -1,5 +1,6 @@
 import { GameState, Player } from "./types";
-import { tickBall, dist } from "./physics";
+import { tickBall, dist, clampToPitch } from "./physics";
+import { toBipolar, fromBipolar } from "./bipolar";
 import { updatePressure } from "./pressure";
 import { updateSquads } from "./squads";
 import {
@@ -112,8 +113,24 @@ export function tickState(state: GameState): GameState {
   // 9. Separation
   const separatedPlayers = resolveSeparation(updatedPlayers);
 
+  // 9b. Lock defenders to home radial position in bipolar coords
+  const restoredPlayers = separatedPlayers.map((p) => {
+    if (p.squadRole !== "defence" || p.hasBall) return p;
+    const homeBp = toBipolar(p.homePos, p.teamId);
+    const currBp = toBipolar(p.pos, p.teamId);
+    return {
+      ...p,
+      pos: clampToPitch(
+        fromBipolar(
+          { radial: homeBp.radial, tangential: currBp.tangential },
+          p.teamId,
+        ),
+      ),
+    };
+  });
+
   // 10. Loose ball pickup — after separation
-  let finalPlayers = separatedPlayers;
+  let finalPlayers = restoredPlayers;
   if (!updatedBall.loose && updatedBall.ownerId === null) {
     let nearest: Player | null = null;
     let nearestDist = Infinity;
