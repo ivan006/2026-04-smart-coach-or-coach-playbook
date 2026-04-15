@@ -283,12 +283,14 @@ export function prepReceive(player: Player, allPlayers: Player[]): Player {
   const ny = dy / d;
   const px = -ny; // perpendicular
 
-  // Sample positions ahead of carrier in a forward cone
+  const py = -nx; // perpendicular y component
+
+  // Sample positions ahead of carrier in a wide forward cone
   const candidates: Vec2[] = [];
   for (let forward = 80; forward <= 400; forward += 80) {
-    for (let lateral = -120; lateral <= 120; lateral += 60) {
+    for (let lateral = -240; lateral <= 240; lateral += 80) {
       const cx = carrier.pos.x + nx * forward + px * lateral;
-      const cy = carrier.pos.y + ny * forward + ny * lateral;
+      const cy = carrier.pos.y + ny * forward + py * lateral;
       if (cx < PITCH_LEFT + 20 || cx > PITCH_RIGHT - 20) continue;
       if (cy < PITCH_TOP + 20 || cy > PITCH_BOTTOM - 20) continue;
       candidates.push({ x: cx, y: cy });
@@ -310,13 +312,28 @@ export function prepReceive(player: Player, allPlayers: Player[]): Player {
     };
   }
 
-  // Score candidates by open space, clear LOS to carrier, AND distance from squadmates
+  // Score candidates by open space, LOS to carrier, AND tangential separation from squadmates
   const squadmates = allPlayers.filter(
     (p) =>
       p.teamId === carrier.teamId &&
-      p.squadRole === carrier.squadRole &&
+      p.squadRole === player.squadRole &&
       p.id !== player.id,
   );
+
+  // Tangential distance = component of separation perpendicular to radial axis
+  function tangentialDist(a: Vec2, b: Vec2): number {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    // Project onto tangential axis (px, py)
+    return Math.abs(dx * px + dy * py);
+  }
+
+  function radialDist(a: Vec2, b: Vec2): number {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    return Math.abs(dx * nx + dy * ny);
+  }
+
   const best = candidates.reduce((bestC, c) => {
     const minOpp =
       opponents.length > 0
@@ -328,16 +345,25 @@ export function prepReceive(player: Player, allPlayers: Player[]): Player {
         : 999;
     const losC = lineOfSightScore(c, carrier.pos, opponents);
     const losBest = lineOfSightScore(bestC, carrier.pos, opponents);
-    const squadDistC =
+    // Tangential separation weighted 2x radial separation
+    const tangC =
       squadmates.length > 0
-        ? Math.min(...squadmates.map((s) => dist(c, s.pos)))
+        ? Math.min(...squadmates.map((s) => tangentialDist(c, s.pos)))
         : 999;
-    const squadDistB =
+    const tangB =
       squadmates.length > 0
-        ? Math.min(...squadmates.map((s) => dist(bestC, s.pos)))
+        ? Math.min(...squadmates.map((s) => tangentialDist(bestC, s.pos)))
         : 999;
-    const scoreC = minOpp + losC + squadDistC;
-    const scoreBest = bestMinOpp + losBest + squadDistB;
+    const radC =
+      squadmates.length > 0
+        ? Math.min(...squadmates.map((s) => radialDist(c, s.pos)))
+        : 999;
+    const radB =
+      squadmates.length > 0
+        ? Math.min(...squadmates.map((s) => radialDist(bestC, s.pos)))
+        : 999;
+    const scoreC = minOpp + losC + tangC * 2 + radC;
+    const scoreBest = bestMinOpp + losBest + tangB * 2 + radB;
     return scoreC > scoreBest ? c : bestC;
   });
 
