@@ -149,48 +149,37 @@ function tickDefence(
   );
 
   if (carrier) {
-    // Closest defender presses, others hold defensive line
-    const defenders = allPlayers.filter(
-      (p) =>
-        p.teamId === player.teamId && p.squadRole === "defence" && !p.hasBall,
-    );
+    const defenders = allPlayers
+      .filter(
+        (p) =>
+          p.teamId === player.teamId && p.squadRole === "defence" && !p.hasBall,
+      )
+      .sort((a, b) => a.id - b.id);
     const closest = defenders.reduce((best, p) =>
       dist(p.pos, carrier.pos) < dist(best.pos, carrier.pos) ? p : best,
     );
 
     if (closest.id === player.id) {
-      return prepTackle(player, allPlayers, carrier);
-    } else {
-      // Hold line — get between carrier and own goal
-      const ownGoal =
-        player.teamId === "home"
-          ? { x: PITCH_LEFT, y: CY }
-          : { x: PITCH_RIGHT, y: CY };
-      const dx = ownGoal.x - carrier.pos.x;
-      const dy = ownGoal.y - carrier.pos.y;
-      const d = Math.sqrt(dx * dx + dy * dy) || 1;
-      // Position 2/3 of the way between carrier and own goal, spread apart
-      const defenders2 = defenders.filter((p) => p.id !== closest.id);
-      const idx = defenders2.findIndex((p) => p.id === player.id);
-      const spread = idx === 0 ? -50 : 50;
-      // Stand 150px in front of own goal, on the line between goal and carrier
-      const blockPos = clampToPitch({
-        x: ownGoal.x + (dx / d) * 150,
-        y: ownGoal.y + (dy / d) * 150 + spread,
-      });
+      const targetY = CY + (carrier.pos.y - CY) * 0.5;
+      const blockPos = clampToPitch({ x: player.pos.x, y: targetY });
       const moved = steerAndMove(
         player,
         blockPos,
-        PLAYER_SPEED * 0.9,
+        PLAYER_SPEED * 0.3,
         allPlayers,
+      );
+      const angle = Math.atan2(
+        carrier.pos.y - player.pos.y,
+        carrier.pos.x - player.pos.x,
       );
       return {
         ...player,
         pos: clampToPitch(moved.pos),
-        angle: moved.angle,
+        angle,
         action: "defend",
       };
     }
+    return holdPosition(player, allPlayers);
   }
 
   if (ball.ownerId === null) return prepIntercept(player, allPlayers, ball.pos);

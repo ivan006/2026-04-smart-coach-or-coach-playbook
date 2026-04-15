@@ -22,7 +22,11 @@ export function steerAroundPlayers(
   selfSquadRole: string,
   selfAction?: string,
 ): Vec2 {
-  if (selfAction === "prep-tackle" || selfAction === "prep-intercept")
+  if (
+    selfAction === "prep-tackle" ||
+    selfAction === "prep-intercept" ||
+    selfAction === "defend"
+  )
     return target;
 
   let tx = target.x;
@@ -30,7 +34,11 @@ export function steerAroundPlayers(
 
   for (const other of allPlayers) {
     if (other.id === selfId && other.teamId === selfTeamId) continue;
-    if (other.action === "prep-tackle" || other.action === "prep-intercept")
+    if (
+      other.action === "prep-tackle" ||
+      other.action === "prep-intercept" ||
+      other.action === "defend"
+    )
       continue;
 
     const dx = pos.x - other.pos.x;
