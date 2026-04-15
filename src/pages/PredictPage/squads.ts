@@ -3,7 +3,7 @@ import { Squad, Player, Team, SquadAction, SquadRole } from "./types";
 function wingerAction(squad: Squad, team: { hasBall: boolean }): SquadAction {
   if (!team.hasBall) return "move-to-take";
   if (squad.hasBall) return "move-to-shoot";
-  return "move-to-space";
+  return "move-to-support";
 }
 
 export function worthyWingerSquad(

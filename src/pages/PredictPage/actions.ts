@@ -138,6 +138,8 @@ function tickWinger(
 ): Player {
   switch (action) {
     case "move-to-shoot":
+      return prepShoot(player, allPlayers);
+    case "move-to-support":
       return prepReceive(player, allPlayers);
     case "move-to-space":
       return moveToSpace(player, allPlayers);

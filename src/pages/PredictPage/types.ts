@@ -21,6 +21,7 @@ export type PlayerAction =
 
 export type WingerSquadAction =
   | "move-to-shoot"
+  | "move-to-support"
   | "move-to-space"
   | "move-to-take";
 export type DefenceSquadAction = "defend-goal" | "choose-worthy-squad";
