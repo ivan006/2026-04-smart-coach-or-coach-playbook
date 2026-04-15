@@ -1,7 +1,15 @@
 import { Player, Squad, Ball } from "./types";
-import { dist } from "./physics";
+import { dist, clampToPitch } from "./physics";
 import { worthyWingerSquad } from "./squads";
-import { PASS_RANGE, PLAYER_SPEED, HIGH_PRESSURE } from "./constants";
+import {
+  PASS_RANGE,
+  RECEIVE_RANGE,
+  PLAYER_SPEED,
+  HIGH_PRESSURE,
+  PITCH_LEFT,
+  PITCH_RIGHT,
+  CY,
+} from "./constants";
 import {
   prepShoot,
   prepPass,
@@ -135,10 +143,56 @@ function tickDefence(
   allPlayers: Player[],
 ): Player {
   if (action === "choose-worthy-squad") return holdPosition(player, allPlayers);
+
   const carrier = allPlayers.find(
     (p) => p.teamId !== player.teamId && p.hasBall,
   );
-  if (carrier) return prepTackle(player, allPlayers, carrier);
+
+  if (carrier) {
+    // Closest defender presses, others hold defensive line
+    const defenders = allPlayers.filter(
+      (p) =>
+        p.teamId === player.teamId && p.squadRole === "defence" && !p.hasBall,
+    );
+    const closest = defenders.reduce((best, p) =>
+      dist(p.pos, carrier.pos) < dist(best.pos, carrier.pos) ? p : best,
+    );
+
+    if (closest.id === player.id) {
+      return prepTackle(player, allPlayers, carrier);
+    } else {
+      // Hold line — get between carrier and own goal
+      const ownGoal =
+        player.teamId === "home"
+          ? { x: PITCH_LEFT, y: CY }
+          : { x: PITCH_RIGHT, y: CY };
+      const dx = ownGoal.x - carrier.pos.x;
+      const dy = ownGoal.y - carrier.pos.y;
+      const d = Math.sqrt(dx * dx + dy * dy) || 1;
+      // Position 2/3 of the way between carrier and own goal, spread apart
+      const defenders2 = defenders.filter((p) => p.id !== closest.id);
+      const idx = defenders2.findIndex((p) => p.id === player.id);
+      const spread = idx === 0 ? -50 : 50;
+      // Stand 150px in front of own goal, on the line between goal and carrier
+      const blockPos = clampToPitch({
+        x: ownGoal.x + (dx / d) * 150,
+        y: ownGoal.y + (dy / d) * 150 + spread,
+      });
+      const moved = steerAndMove(
+        player,
+        blockPos,
+        PLAYER_SPEED * 0.9,
+        allPlayers,
+      );
+      return {
+        ...player,
+        pos: clampToPitch(moved.pos),
+        angle: moved.angle,
+        action: "defend",
+      };
+    }
+  }
+
   if (ball.ownerId === null) return prepIntercept(player, allPlayers, ball.pos);
   return holdPosition(player, allPlayers);
 }
