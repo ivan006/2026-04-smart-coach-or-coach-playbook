@@ -27,14 +27,32 @@ function goalTarget(teamId: TeamId) {
 
 export function isInShootingPosition(player: Player): boolean {
   const gt = goalTarget(player.teamId);
-  return (
+  const inRange =
     Math.abs(player.pos.x - gt.x) < SHOOT_RANGE &&
-    Math.abs(player.pos.y - CY) < GOAL_H
-  );
+    Math.abs(player.pos.y - CY) < GOAL_H;
+  if (!inRange) return false;
+  // Must be facing the goal within 45 degrees
+  const angleToGoal = Math.atan2(gt.y - player.pos.y, gt.x - player.pos.x);
+  let diff = angleToGoal - player.angle;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return Math.abs(diff) < Math.PI / 4;
 }
 
 export function isInPassPosition(player: Player, target: Player): boolean {
   return dist(player.pos, target.pos) < PASS_RANGE;
+}
+
+const MAX_TURN_PER_TICK = Math.PI / 20; // ~9 degrees per tick, 180 takes ~20 ticks
+
+/** Limits angle change per tick so players can't instantly snap direction */
+export function clampTurn(currentAngle: number, targetAngle: number): number {
+  let diff = targetAngle - currentAngle;
+  // Normalise to [-PI, PI]
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  if (Math.abs(diff) <= MAX_TURN_PER_TICK) return targetAngle;
+  return currentAngle + Math.sign(diff) * MAX_TURN_PER_TICK;
 }
 
 export function steerAndMove(
@@ -52,11 +70,13 @@ export function steerAndMove(
     player.squadRole,
     player.action,
   );
-  return moveToward(player.pos, steered, speed);
+  const result = moveToward(player.pos, steered, speed);
+  return { ...result, angle: clampTurn(player.angle, result.angle) };
 }
 
 export function directMove(player: Player, target: Vec2, speed: number) {
-  return moveToward(player.pos, target, speed);
+  const result = moveToward(player.pos, target, speed);
+  return { ...result, angle: clampTurn(player.angle, result.angle) };
 }
 
 function supportPos(leader: Player, target: Vec2): Vec2 {
