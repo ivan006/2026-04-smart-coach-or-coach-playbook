@@ -18,11 +18,6 @@ export default function PredictPage() {
     player: Player;
   } | null>(null);
   const [showGrid, setShowGrid] = useState(false);
-  const showGridRef = useRef(false);
-
-  useEffect(() => {
-    showGridRef.current = showGrid;
-  }, [showGrid]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -37,12 +32,13 @@ export default function PredictPage() {
         last = now;
         stateRef.current = tickState(stateRef.current);
       }
-      render(ctx, stateRef.current, showGridRef.current);
+      render(ctx, stateRef.current, showGrid);
     }
 
+    cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafRef.current);
-  }, []);
+  }, [showGrid]);
 
   const togglePause = useCallback(() => {
     pausedRef.current = !pausedRef.current;

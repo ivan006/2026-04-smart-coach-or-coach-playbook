@@ -22,15 +22,15 @@ import { toBipolar, fromBipolar, a } from "./bipolar";
 
 function drawBipolarGrid(ctx: CanvasRenderingContext2D) {
   ctx.save();
-  ctx.lineWidth = 0.6;
+  ctx.lineWidth = 0.8;
 
   // Radial lines (constant τ) — blue
-  ctx.strokeStyle = "rgba(100,180,255,0.35)";
-  for (let tau = -2.4; tau <= 2.4; tau += 0.4) {
+  ctx.strokeStyle = "rgba(100,180,255,0.5)";
+  for (let tau = -2.4; tau <= 2.4; tau += 0.3) {
     if (Math.abs(tau) < 0.05) continue;
     ctx.beginPath();
     let first = true;
-    for (let sigma = -Math.PI + 0.01; sigma <= Math.PI; sigma += 0.02) {
+    for (let sigma = -Math.PI + 0.01; sigma <= Math.PI; sigma += 0.015) {
       const p = fromBipolar({ radial: tau, tangential: sigma });
       if (
         p.x < PITCH_LEFT - 40 ||
@@ -48,11 +48,11 @@ function drawBipolarGrid(ctx: CanvasRenderingContext2D) {
   }
 
   // Tangential lines (constant σ) — orange
-  ctx.strokeStyle = "rgba(255,140,80,0.35)";
-  for (let sigma = -Math.PI + 0.3; sigma <= Math.PI - 0.1; sigma += 0.3) {
+  ctx.strokeStyle = "rgba(255,140,80,0.5)";
+  for (let sigma = -Math.PI + 0.25; sigma <= Math.PI - 0.1; sigma += 0.25) {
     ctx.beginPath();
     let first = true;
-    for (let tau = -4; tau <= 4; tau += 0.03) {
+    for (let tau = -4; tau <= 4; tau += 0.02) {
       const p = fromBipolar({ radial: tau, tangential: sigma });
       if (
         p.x < PITCH_LEFT - 40 ||
@@ -108,7 +108,54 @@ export function render(
   ctx.strokeRect(PITCH_LEFT, CY - 100, 120, 200);
   ctx.strokeRect(PITCH_RIGHT - 120, CY - 100, 120, 200);
 
-  if (showGrid) drawBipolarGrid(ctx);
+  if (showGrid) {
+    ctx.save();
+    ctx.lineWidth = 0.8;
+    // Radial lines (constant τ) — blue
+    ctx.strokeStyle = "rgba(100,180,255,0.45)";
+    for (let tau = -2; tau <= 2; tau += 0.3) {
+      if (Math.abs(tau) < 0.05) continue;
+      ctx.beginPath();
+      let first = true;
+      for (let sigma = -Math.PI + 0.01; sigma <= Math.PI; sigma += 0.02) {
+        const p = fromBipolar({ radial: tau, tangential: sigma });
+        if (
+          p.x < PITCH_LEFT ||
+          p.x > PITCH_RIGHT ||
+          p.y < PITCH_TOP ||
+          p.y > PITCH_BOTTOM
+        ) {
+          first = true;
+          continue;
+        }
+        first ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
+        first = false;
+      }
+      ctx.stroke();
+    }
+    // Tangential lines (constant σ) — orange
+    ctx.strokeStyle = "rgba(255,140,80,0.45)";
+    for (let sigma = -Math.PI + 0.25; sigma <= Math.PI - 0.1; sigma += 0.25) {
+      ctx.beginPath();
+      let first = true;
+      for (let tau = -3; tau <= 3; tau += 0.02) {
+        const p = fromBipolar({ radial: tau, tangential: sigma });
+        if (
+          p.x < PITCH_LEFT ||
+          p.x > PITCH_RIGHT ||
+          p.y < PITCH_TOP ||
+          p.y > PITCH_BOTTOM
+        ) {
+          first = true;
+          continue;
+        }
+        first ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
+        first = false;
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
 
   // Goals
   ctx.strokeStyle = "rgba(255,255,255,0.9)";
