@@ -11,7 +11,7 @@ import { resolveSeparation } from "./separation";
 import { resetAfterGoal } from "./init";
 import { PLAYER_RADIUS } from "./constants";
 
-const TACKLE_CONTACT = 18;
+const TACKLE_CONTACT = 22;
 const PICKUP_RADIUS = PLAYER_RADIUS * 3; // generous — separation can't block this
 
 function pickupLooseBall(

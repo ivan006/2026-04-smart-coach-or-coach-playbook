@@ -324,16 +324,12 @@ function tickWinger(
       };
     }
     case "move-to-take": {
-      if (dist(player.pos, ball.pos) < 60) {
-        return { ...player, action: "keep-distance" };
-      }
-      // Direct approach — no steering so players don't get deflected away from ball
       const moved = directMove(player, ball.pos, PLAYER_SPEED * 0.9);
       return {
         ...player,
         pos: clampToPitch(moved.pos),
         angle: moved.angle,
-        action: "move-to-take",
+        action: "prep-tackle",
       };
     }
     default:
@@ -431,18 +427,13 @@ function tickDefence(
   const opponentCarrier = allPlayers.find(
     (p) => p.teamId !== player.teamId && p.hasBall,
   );
-  if (
-    isInOwnThird(player) &&
-    opponentCarrier &&
-    dist(player.pos, opponentCarrier.pos) < 150
-  ) {
-    // Direct approach to opponent carrier — bypass steering
+  if (opponentCarrier) {
     const moved = directMove(player, opponentCarrier.pos, PLAYER_SPEED);
     return {
       ...player,
       pos: clampToPitch(moved.pos),
       angle: moved.angle,
-      action: "tackle",
+      action: "prep-tackle",
     };
   }
 

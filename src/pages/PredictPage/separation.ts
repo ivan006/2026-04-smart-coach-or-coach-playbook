@@ -2,12 +2,12 @@ import { Player, Vec2 } from "./types";
 import { PLAYER_RADIUS } from "./constants";
 import { clampToPitch } from "./physics";
 
-const MIN_DIST = PLAYER_RADIUS * 2 + 4; // 24px hard separation (all players)
-const SQUAD_MIN_DIST = PLAYER_RADIUS * 2 + 40; // 60px preferred spacing within same squad
+const MIN_DIST = PLAYER_RADIUS * 2 - 6; // 14px — opponents can get close enough to tackle
+const SQUAD_MIN_DIST = PLAYER_RADIUS * 2 + 40; // 60px preferred spacing within same team
 const STEER_RADIUS = PLAYER_RADIUS * 2 + 20; // 44px lookahead for general steering
-const SQUAD_STEER_RADIUS = PLAYER_RADIUS * 2 + 60; // 80px lookahead for squad mates
+const SQUAD_STEER_RADIUS = PLAYER_RADIUS * 2 + 80; // 100px lookahead for same-team members
 const STEER_STRENGTH = 0.4;
-const SQUAD_STEER_STRENGTH = 0.7; // stronger push away from squad mates
+const SQUAD_STEER_STRENGTH = 1.2;
 
 /**
  * Steering avoidance — bends movement target away from nearby players.
@@ -31,10 +31,9 @@ export function steerAroundPlayers(
     const dy = pos.y - other.pos.y;
     const d = Math.sqrt(dx * dx + dy * dy);
 
-    const isSameSquad =
-      other.teamId === selfTeamId && other.squadRole === selfSquadRole;
-    const radius = isSameSquad ? SQUAD_STEER_RADIUS : STEER_RADIUS;
-    const strength = isSameSquad ? SQUAD_STEER_STRENGTH : STEER_STRENGTH;
+    const isSameTeam = other.teamId === selfTeamId;
+    const radius = isSameTeam ? SQUAD_STEER_RADIUS : STEER_RADIUS;
+    const strength = isSameTeam ? SQUAD_STEER_STRENGTH : STEER_STRENGTH;
 
     if (d < radius && d > 0) {
       const push = strength * (1 - d / radius);
@@ -58,8 +57,11 @@ export function resolveSeparation(players: Player[]): Player[] {
       const a = result[i];
       const b = result[j];
 
-      const isSameSquad = a.teamId === b.teamId && a.squadRole === b.squadRole;
-      const minDist = isSameSquad ? SQUAD_MIN_DIST : MIN_DIST;
+      const bothTackling =
+        (a.action === "tackle" || a.action === "prep-tackle") &&
+        (b.action === "tackle" || b.action === "prep-tackle");
+      const isSameTeam = a.teamId === b.teamId;
+      const minDist = isSameTeam && !bothTackling ? SQUAD_MIN_DIST : MIN_DIST;
 
       const dx = a.pos.x - b.pos.x;
       const dy = a.pos.y - b.pos.y;

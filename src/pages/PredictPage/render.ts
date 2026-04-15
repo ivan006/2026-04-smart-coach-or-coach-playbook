@@ -71,8 +71,10 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState) {
     ctx.ellipse(1, 1, PLAYER_RADIUS, PLAYER_RADIUS, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Body
-    ctx.fillStyle = p.hasBall ? "#ffffff" : col;
+    // Body — flash white for 15 ticks after tackle
+    const tackling = p.tackleCooldown > 45;
+    const bodyCol = p.hasBall || tackling ? "#ffffff" : col;
+    ctx.fillStyle = bodyCol;
     ctx.strokeStyle = "rgba(0,0,0,0.5)";
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -81,7 +83,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState) {
     ctx.stroke();
 
     // Arms
-    ctx.strokeStyle = p.hasBall ? "#ffffff" : col;
+    ctx.strokeStyle = bodyCol;
     ctx.lineWidth = 2.5;
     ctx.lineCap = "round";
     ctx.beginPath();

@@ -10,6 +10,7 @@ export type PlayerAction =
   | "prep-shoot"
   | "prep-receive"
   | "prep-pass"
+  | "prep-tackle"
   | "tackle"
   | "keep-distance"
   | "move-to-space"
