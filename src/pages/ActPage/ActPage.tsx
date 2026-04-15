@@ -136,7 +136,9 @@ export default function ActPage() {
   const [showThem, setShowThem] = useState(true);
   const [stagger, setStagger] = useState(false);
   const [compress, setCompress] = useState<"back" | "fwd" | null>(null);
+  const [compressY, setCompressY] = useState<"left" | "right" | null>(null);
   const [tiltTop, setTiltTop] = useState(false);
+  const [tiltBottom, setTiltBottom] = useState(false);
 
   const handleMove = (
     team: "us" | "them",
@@ -163,7 +165,17 @@ export default function ActPage() {
         x = Math.round(fwdOrigin + (x - fwdOrigin) * (2 / 3));
       if (stagger && (p.y <= 3 || p.y >= 7)) x = x + dir;
       if (tiltTop && p.id !== 1) x = x + tiltOffset(p.y) * dir;
-      return { ...p, x: Math.max(1, Math.min(COLS, x)) };
+      if (tiltBottom && p.id !== 1) x = x + tiltOffset(9 - p.y) * dir;
+      let y = p.y;
+      if (compressY === "left" && p.id !== 1)
+        y = Math.round(2 + (y - 2) * (2 / 3));
+      if (compressY === "right" && p.id !== 1)
+        y = Math.round(8 + (y - 8) * (2 / 3));
+      return {
+        ...p,
+        x: Math.max(1, Math.min(COLS, x)),
+        y: Math.max(1, Math.min(ROWS, y)),
+      };
     });
   };
   const displayUs = showUs ? applyTransforms(us, 1) : [];
@@ -224,6 +236,30 @@ export default function ActPage() {
               onChange={(e) => setTiltTop(e.target.checked)}
             />
             Tilt top
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+            <input
+              type="checkbox"
+              checked={tiltBottom}
+              onChange={(e) => setTiltBottom(e.target.checked)}
+            />
+            Tilt bottom
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+            <input
+              type="checkbox"
+              checked={compressY === "left"}
+              onChange={(e) => setCompressY(e.target.checked ? "left" : null)}
+            />
+            Compress left
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+            <input
+              type="checkbox"
+              checked={compressY === "right"}
+              onChange={(e) => setCompressY(e.target.checked ? "right" : null)}
+            />
+            Compress right
           </label>
         </div>
       </div>
