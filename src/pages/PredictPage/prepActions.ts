@@ -191,6 +191,30 @@ export function prepPass(player: Player, allPlayers: Player[]): Player {
 // Move to low pressure space to receive
 
 export function prepReceive(player: Player, allPlayers: Player[]): Player {
+  const carrier = allPlayers.find(
+    (p) => p.teamId === player.teamId && p.hasBall,
+  );
+  if (carrier) {
+    // Move to low pressure space within 100px of carrier
+    const space = findLowPressureSpace(player, allPlayers);
+    const dx = space.x - carrier.pos.x;
+    const dy = space.y - carrier.pos.y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    const target =
+      d > 100
+        ? clampToPitch({
+            x: carrier.pos.x + (dx / d) * 100,
+            y: carrier.pos.y + (dy / d) * 100,
+          })
+        : space;
+    const moved = steerAndMove(player, target, PLAYER_SPEED * 0.9, allPlayers);
+    return {
+      ...player,
+      pos: clampToPitch(moved.pos),
+      angle: moved.angle,
+      action: "prep-receive",
+    };
+  }
   const space = findLowPressureSpace(player, allPlayers);
   const moved = steerAndMove(player, space, PLAYER_SPEED * 0.9, allPlayers);
   return {
