@@ -116,15 +116,12 @@ export function tickState(state: GameState): GameState {
   // 9b. Lock defenders to home radial position in bipolar coords
   const restoredPlayers = separatedPlayers.map((p) => {
     if (p.squadRole !== "defence" || p.hasBall) return p;
-    const homeBp = toBipolar(p.homePos, p.teamId);
-    const currBp = toBipolar(p.pos, p.teamId);
+    const homeBp = toBipolar(p.homePos);
+    const currBp = toBipolar(p.pos);
     return {
       ...p,
       pos: clampToPitch(
-        fromBipolar(
-          { radial: homeBp.radial, tangential: currBp.tangential },
-          p.teamId,
-        ),
+        fromBipolar({ radial: homeBp.radial, tangential: currBp.tangential }),
       ),
     };
   });

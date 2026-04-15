@@ -186,8 +186,8 @@ function tickRelay(
 
 function holdDefensiveLine(player: Player, allPlayers: Player[]): Player {
   // In bipolar coords: radial is locked to home radial, tangential drifts back to home
-  const homeBp = toBipolar(player.homePos, player.teamId);
-  const currBp = toBipolar(player.pos, player.teamId);
+  const homeBp = toBipolar(player.homePos);
+  const currBp = toBipolar(player.pos);
   const newBp = {
     radial: homeBp.radial,
     tangential:
@@ -196,7 +196,7 @@ function holdDefensiveLine(player: Player, allPlayers: Player[]): Player {
   const angle = player.teamId === "home" ? 0 : Math.PI;
   return {
     ...player,
-    pos: clampToPitch(fromBipolar(newBp, player.teamId)),
+    pos: clampToPitch(fromBipolar(newBp)),
     angle,
     action: "defend",
   };
@@ -228,14 +228,13 @@ function tickDefence(
 
     if (closest.id === player.id) {
       // Closest defender: lock radial to home, slide tangentially toward carrier's tangential
-      const homeBp = toBipolar(player.homePos, player.teamId);
-      const carrierBp = toBipolar(carrier.pos, player.teamId);
-      const currBp = toBipolar(player.pos, player.teamId);
-      const targetTang = CY + carrierBp.tangential * 0.8; // biased toward center
+      const homeBp = toBipolar(player.homePos);
+      const carrierBp = toBipolar(carrier.pos);
+      const currBp = toBipolar(player.pos);
+      const targetTang = carrierBp.tangential * 0.8;
       const newBp = {
         radial: homeBp.radial,
-        tangential:
-          currBp.tangential + (targetTang - CY - currBp.tangential) * 0.1,
+        tangential: currBp.tangential + (targetTang - currBp.tangential) * 0.1,
       };
       const angle = Math.atan2(
         carrier.pos.y - player.pos.y,
@@ -243,7 +242,7 @@ function tickDefence(
       );
       return {
         ...player,
-        pos: clampToPitch(fromBipolar(newBp, player.teamId)),
+        pos: clampToPitch(fromBipolar(newBp)),
         angle,
         action: "defend",
       };

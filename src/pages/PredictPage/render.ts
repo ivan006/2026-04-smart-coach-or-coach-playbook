@@ -18,8 +18,65 @@ import {
   PRESSURE_RADIUS,
   TEAM_COLOURS,
 } from "./constants";
+import { toBipolar, fromBipolar, a } from "./bipolar";
 
-export function render(ctx: CanvasRenderingContext2D, state: GameState) {
+function drawBipolarGrid(ctx: CanvasRenderingContext2D) {
+  ctx.save();
+  ctx.lineWidth = 0.6;
+
+  // Radial lines (constant τ) — blue
+  ctx.strokeStyle = "rgba(100,180,255,0.35)";
+  for (let tau = -2.4; tau <= 2.4; tau += 0.4) {
+    if (Math.abs(tau) < 0.05) continue;
+    ctx.beginPath();
+    let first = true;
+    for (let sigma = -Math.PI + 0.01; sigma <= Math.PI; sigma += 0.02) {
+      const p = fromBipolar({ radial: tau, tangential: sigma });
+      if (
+        p.x < PITCH_LEFT - 40 ||
+        p.x > PITCH_RIGHT + 40 ||
+        p.y < PITCH_TOP - 40 ||
+        p.y > PITCH_BOTTOM + 40
+      ) {
+        first = true;
+        continue;
+      }
+      first ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
+      first = false;
+    }
+    ctx.stroke();
+  }
+
+  // Tangential lines (constant σ) — orange
+  ctx.strokeStyle = "rgba(255,140,80,0.35)";
+  for (let sigma = -Math.PI + 0.3; sigma <= Math.PI - 0.1; sigma += 0.3) {
+    ctx.beginPath();
+    let first = true;
+    for (let tau = -4; tau <= 4; tau += 0.03) {
+      const p = fromBipolar({ radial: tau, tangential: sigma });
+      if (
+        p.x < PITCH_LEFT - 40 ||
+        p.x > PITCH_RIGHT + 40 ||
+        p.y < PITCH_TOP - 40 ||
+        p.y > PITCH_BOTTOM + 40
+      ) {
+        first = true;
+        continue;
+      }
+      first ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
+      first = false;
+    }
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+export function render(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  showGrid = false,
+) {
   ctx.clearRect(0, 0, W, H);
 
   // Pitch stripes
@@ -51,6 +108,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState) {
   ctx.strokeRect(PITCH_LEFT, CY - 100, 120, 200);
   ctx.strokeRect(PITCH_RIGHT - 120, CY - 100, 120, 200);
 
+  if (showGrid) drawBipolarGrid(ctx);
+
   // Goals
   ctx.strokeStyle = "rgba(255,255,255,0.9)";
   ctx.lineWidth = 3;
@@ -73,7 +132,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState) {
 
     // Body — flash white for 15 ticks after tackle
     const tackling = p.tackleCooldown > 45;
-    const bodyCol = tackling ? "#ffffff" : col;
+    const bodyCol = p.hasBall || tackling ? "#ffffff" : col;
     ctx.fillStyle = bodyCol;
     ctx.strokeStyle = "rgba(0,0,0,0.5)";
     ctx.lineWidth = 1;

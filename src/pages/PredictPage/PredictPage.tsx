@@ -17,6 +17,12 @@ export default function PredictPage() {
     y: number;
     player: Player;
   } | null>(null);
+  const [showGrid, setShowGrid] = useState(false);
+  const showGridRef = useRef(false);
+
+  useEffect(() => {
+    showGridRef.current = showGrid;
+  }, [showGrid]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -31,7 +37,7 @@ export default function PredictPage() {
         last = now;
         stateRef.current = tickState(stateRef.current);
       }
-      render(ctx, stateRef.current);
+      render(ctx, stateRef.current, showGridRef.current);
     }
 
     rafRef.current = requestAnimationFrame(loop);
@@ -95,6 +101,12 @@ export default function PredictPage() {
         >
           Reset
         </button>
+        <button
+          onClick={() => setShowGrid((g) => !g)}
+          className={`px-4 py-1.5 text-sm border rounded text-white ${showGrid ? "border-blue-400/60 bg-blue-400/10" : "border-white/20 hover:bg-white/10"}`}
+        >
+          {showGrid ? "Hide Grid" : "Show Grid"}
+        </button>
       </div>
 
       <div className="relative">
@@ -155,6 +167,13 @@ export default function PredictPage() {
         <span>
           <span style={{ color: TEAM_COLOURS["away"] }}>■</span> Away
         </span>
+        {showGrid && (
+          <span>
+            <span style={{ color: "rgba(100,180,255,0.8)" }}>—</span> radial (τ){" "}
+            <span style={{ color: "rgba(255,140,80,0.8)" }}>—</span> tangential
+            (σ)
+          </span>
+        )}
         <span className="text-white/30">Hover player for debug info</span>
       </div>
     </div>
