@@ -50,6 +50,7 @@ export function steerAndMove(
     player.id,
     player.teamId,
     player.squadRole,
+    player.action,
   );
   return moveToward(player.pos, steered, speed);
 }

@@ -20,12 +20,18 @@ export function steerAroundPlayers(
   selfId: number,
   selfTeamId: string,
   selfSquadRole: string,
+  selfAction?: string,
 ): Vec2 {
+  if (selfAction === "prep-tackle" || selfAction === "prep-intercept")
+    return target;
+
   let tx = target.x;
   let ty = target.y;
 
   for (const other of allPlayers) {
     if (other.id === selfId && other.teamId === selfTeamId) continue;
+    if (other.action === "prep-tackle" || other.action === "prep-intercept")
+      continue;
 
     const dx = pos.x - other.pos.x;
     const dy = pos.y - other.pos.y;
