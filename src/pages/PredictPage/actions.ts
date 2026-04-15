@@ -6,6 +6,8 @@ import {
   RECEIVE_RANGE,
   PLAYER_SPEED,
   HIGH_PRESSURE,
+  PITCH_TOP,
+  PITCH_BOTTOM,
   PITCH_LEFT,
   PITCH_RIGHT,
   CY,
@@ -130,6 +132,26 @@ function faceTarget(player: Player, target: { x: number; y: number }): Player {
   return { ...player, angle: clamped };
 }
 
+function defendArcTarget(player: Player, carrier: Player) {
+  const ownGoal =
+    player.teamId === "home"
+      ? { x: PITCH_LEFT, y: CY }
+      : { x: PITCH_RIGHT, y: CY };
+  const homeRadius = dist(player.homePos, ownGoal);
+  const carrierAngle = Math.atan2(
+    carrier.pos.y - ownGoal.y,
+    carrier.pos.x - ownGoal.x,
+  );
+
+  return clampToPitch({
+    x: ownGoal.x + Math.cos(carrierAngle) * homeRadius,
+    y: Math.max(
+      PITCH_TOP + 24,
+      Math.min(PITCH_BOTTOM - 24, ownGoal.y + Math.sin(carrierAngle) * homeRadius),
+    ),
+  });
+}
+
 function tickWinger(
   player: Player,
   action: string,
@@ -199,8 +221,7 @@ function tickDefence(
     );
 
     if (closest.id === player.id) {
-      const targetY = CY + (carrier.pos.y - CY) * 0.8;
-      const blockPos = clampToPitch({ x: player.pos.x, y: targetY });
+      const blockPos = defendArcTarget(player, carrier);
       const moved = steerAndMove(
         player,
         blockPos,
