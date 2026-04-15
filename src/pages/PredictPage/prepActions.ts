@@ -191,24 +191,45 @@ export function prepPass(player: Player, allPlayers: Player[]): Player {
 // ── Prep receive ──────────────────────────────────────────────────────────────
 // Move to low pressure space to receive
 
+/**
+ * Returns a score representing how clear the line of sight is between
+ * pos and target — higher = clearer. Opponents near the line reduce the score.
+ */
+function lineOfSightScore(
+  pos: Vec2,
+  target: Vec2,
+  opponents: Player[],
+): number {
+  const dx = target.x - pos.x;
+  const dy = target.y - pos.y;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  let score = 200; // base clear score
+  for (const opp of opponents) {
+    // Project opponent onto the line segment
+    const t = Math.max(
+      0,
+      Math.min(
+        1,
+        ((opp.pos.x - pos.x) * dx + (opp.pos.y - pos.y) * dy) / (len * len),
+      ),
+    );
+    const closestX = pos.x + t * dx;
+    const closestY = pos.y + t * dy;
+    const perpDist = Math.sqrt(
+      (opp.pos.x - closestX) ** 2 + (opp.pos.y - closestY) ** 2,
+    );
+    if (perpDist < 40) score -= (40 - perpDist) * 3; // penalise blocked lanes
+  }
+  return Math.max(0, score);
+}
+
 export function prepReceive(player: Player, allPlayers: Player[]): Player {
   const carrier = allPlayers.find(
     (p) => p.teamId === player.teamId && p.hasBall,
   );
-  if (carrier) {
-    // Move to low pressure space within 100px of carrier
+  if (!carrier) {
     const space = findLowPressureSpace(player, allPlayers);
-    const dx = space.x - carrier.pos.x;
-    const dy = space.y - carrier.pos.y;
-    const d = Math.sqrt(dx * dx + dy * dy);
-    const target =
-      d > 100
-        ? clampToPitch({
-            x: carrier.pos.x + (dx / d) * 100,
-            y: carrier.pos.y + (dy / d) * 100,
-          })
-        : space;
-    const moved = steerAndMove(player, target, PLAYER_SPEED * 0.9, allPlayers);
+    const moved = steerAndMove(player, space, PLAYER_SPEED * 0.9, allPlayers);
     return {
       ...player,
       pos: clampToPitch(moved.pos),
@@ -216,8 +237,64 @@ export function prepReceive(player: Player, allPlayers: Player[]): Player {
       action: "prep-receive",
     };
   }
-  const space = findLowPressureSpace(player, allPlayers);
-  const moved = steerAndMove(player, space, PLAYER_SPEED * 0.9, allPlayers);
+
+  const opponents = allPlayers.filter((p) => p.teamId !== player.teamId);
+  const gt =
+    carrier.teamId === "home"
+      ? { x: PITCH_RIGHT, y: CY }
+      : { x: PITCH_LEFT, y: CY };
+
+  // Direction from carrier to goal
+  const dx = gt.x - carrier.pos.x;
+  const dy = gt.y - carrier.pos.y;
+  const d = Math.sqrt(dx * dx + dy * dy) || 1;
+  const nx = dx / d;
+  const ny = dy / d;
+  const px = -ny; // perpendicular
+
+  // Sample positions ahead of carrier in a forward cone
+  const candidates: Vec2[] = [];
+  for (let forward = 80; forward <= 240; forward += 80) {
+    for (let lateral = -120; lateral <= 120; lateral += 60) {
+      const cx = carrier.pos.x + nx * forward + px * lateral;
+      const cy = carrier.pos.y + ny * forward + ny * lateral;
+      if (cx < PITCH_LEFT + 20 || cx > PITCH_RIGHT - 20) continue;
+      if (cy < PITCH_TOP + 20 || cy > PITCH_BOTTOM - 20) continue;
+      candidates.push({ x: cx, y: cy });
+    }
+  }
+
+  if (candidates.length === 0) {
+    const moved = steerAndMove(
+      player,
+      player.homePos,
+      PLAYER_SPEED * 0.9,
+      allPlayers,
+    );
+    return {
+      ...player,
+      pos: clampToPitch(moved.pos),
+      angle: moved.angle,
+      action: "prep-receive",
+    };
+  }
+
+  // Pick position with best open space AND clear line of sight to carrier
+  const best = candidates.reduce((bestC, c) => {
+    const minOpp =
+      opponents.length > 0
+        ? Math.min(...opponents.map((o) => dist(c, o.pos)))
+        : 999;
+    const bestMinOpp =
+      opponents.length > 0
+        ? Math.min(...opponents.map((o) => dist(bestC, o.pos)))
+        : 999;
+    const losC = lineOfSightScore(c, carrier.pos, opponents);
+    const losBest = lineOfSightScore(bestC, carrier.pos, opponents);
+    return minOpp + losC > bestMinOpp + losBest ? c : bestC;
+  });
+
+  const moved = steerAndMove(player, best, PLAYER_SPEED * 0.9, allPlayers);
   return {
     ...player,
     pos: clampToPitch(moved.pos),

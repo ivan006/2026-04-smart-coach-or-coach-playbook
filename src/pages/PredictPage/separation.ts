@@ -26,8 +26,24 @@ export function steerAroundPlayers(
     selfAction === "prep-tackle" ||
     selfAction === "prep-intercept" ||
     selfAction === "defend"
-  )
-    return target;
+  ) {
+    // Ignore teammate force fields but fear opponents
+    let tx = target.x;
+    let ty = target.y;
+    for (const other of allPlayers) {
+      if (other.id === selfId && other.teamId === selfTeamId) continue;
+      if (other.teamId === selfTeamId) continue; // skip teammates
+      const dx = pos.x - other.pos.x;
+      const dy = pos.y - other.pos.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d < OPPONENT_STEER_RADIUS && d > 0) {
+        const push = OPPONENT_STEER_STRENGTH * (1 - d / OPPONENT_STEER_RADIUS);
+        tx += (dx / d) * push * OPPONENT_STEER_RADIUS;
+        ty += (dy / d) * push * OPPONENT_STEER_RADIUS;
+      }
+    }
+    return { x: tx, y: ty };
+  }
 
   let tx = target.x;
   let ty = target.y;

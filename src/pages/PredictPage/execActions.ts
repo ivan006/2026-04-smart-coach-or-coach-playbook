@@ -41,11 +41,13 @@ export function execPass(
     x: target.pos.x - passer.pos.x,
     y: target.pos.y - passer.pos.y,
   });
+  const d = dist(passer.pos, target.pos);
+  const power = Math.min(PASS_POWER, Math.max(4, d * 0.08));
   return {
     player: { ...passer, hasBall: false, action: "pass" },
     ball: {
       ...ball,
-      vel: { x: n.x * PASS_POWER, y: n.y * PASS_POWER },
+      vel: { x: n.x * power, y: n.y * power },
       loose: true,
       ownerId: null,
     },

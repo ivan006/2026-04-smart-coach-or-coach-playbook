@@ -39,6 +39,17 @@ export function tickPlayerWithBall(
   // Wingers — shoot when in position, otherwise advance
   if (p.squadRole === "right-wing" || p.squadRole === "left-wing") {
     if (isInShootingPosition(p)) return execShoot(p, ball);
+    // Under pressure — pass to squadmate first
+    if (p.pressure >= HIGH_PRESSURE) {
+      const squadmate = allPlayers.find(
+        (t) =>
+          t.teamId === p.teamId &&
+          t.squadRole === p.squadRole &&
+          t.id !== p.id &&
+          t.pressure < HIGH_PRESSURE,
+      );
+      if (squadmate) return execPass(p, squadmate, ball);
+    }
     const prepped = prepShoot(p, allPlayers);
     return { player: prepped, ball: { ...ball, pos: prepped.pos } };
   }
@@ -160,7 +171,7 @@ function tickDefence(
     );
 
     if (closest.id === player.id) {
-      const targetY = CY + (carrier.pos.y - CY) * 0.5;
+      const targetY = CY + (carrier.pos.y - CY) * 0.8;
       const blockPos = clampToPitch({ x: player.pos.x, y: targetY });
       const moved = steerAndMove(
         player,

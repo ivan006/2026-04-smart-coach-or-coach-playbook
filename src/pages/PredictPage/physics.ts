@@ -65,7 +65,7 @@ export function tickBall(
     vy = -Math.abs(vy) * BOUNCE_DAMP;
   }
 
-  // Player bounce — ball deflects off any player it hits
+  // Player collision — bounce + 50% chance of slowing ball by 50%
   const minDist = PLAYER_RADIUS + BALL_RADIUS;
   for (const p of players) {
     if (p.hasBall) continue;
@@ -73,15 +73,17 @@ export function tickBall(
     const dy = y - p.pos.y;
     const d = Math.sqrt(dx * dx + dy * dy);
     if (d < minDist && d > 0) {
-      // Push ball out of player
       const nx = dx / d;
       const ny = dy / d;
       x = p.pos.x + nx * minDist;
       y = p.pos.y + ny * minDist;
-      // Reflect velocity off player surface
       const dot = vx * nx + vy * ny;
       vx = (vx - 2 * dot * nx) * BALL_BOUNCE;
       vy = (vy - 2 * dot * ny) * BALL_BOUNCE;
+      if (Math.random() < 0.5) {
+        vx *= 0.5;
+        vy *= 0.5;
+      }
     }
   }
 
