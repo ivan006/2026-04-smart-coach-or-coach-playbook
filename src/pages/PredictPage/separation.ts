@@ -2,16 +2,16 @@ import { Player, Vec2 } from "./types";
 import { PLAYER_RADIUS } from "./constants";
 import { clampToPitch } from "./physics";
 
-const MIN_DIST = PLAYER_RADIUS * 2 - 6; // 14px — opponents can get close enough to tackle
-const SQUAD_MIN_DIST = PLAYER_RADIUS * 2 + 40; // 60px preferred spacing within same team
-const STEER_RADIUS = PLAYER_RADIUS * 2 + 20; // 44px lookahead for general steering
-const SQUAD_STEER_RADIUS = PLAYER_RADIUS * 2 + 80; // 100px lookahead for same-team members
-const STEER_STRENGTH = 0.4;
-const SQUAD_STEER_STRENGTH = 1.2;
+const TEAMMATE_MIN_DIST = 60; // all teammates keep this distance
+const OPPONENT_MIN_DIST = 14; // opponents can get close to tackle
+const TEAMMATE_STEER_RADIUS = 100;
+const OPPONENT_STEER_RADIUS = 44;
+const TEAMMATE_STEER_STRENGTH = 1.2;
+const OPPONENT_STEER_STRENGTH = 0.4;
 
 /**
- * Steering avoidance — bends movement target away from nearby players.
- * Applies stronger repulsion from same-squad members.
+ * Bends movement target away from nearby players.
+ * Stronger repulsion from teammates, weaker from opponents.
  */
 export function steerAroundPlayers(
   pos: Vec2,
@@ -31,9 +31,11 @@ export function steerAroundPlayers(
     const dy = pos.y - other.pos.y;
     const d = Math.sqrt(dx * dx + dy * dy);
 
-    const isSameTeam = other.teamId === selfTeamId;
-    const radius = isSameTeam ? SQUAD_STEER_RADIUS : STEER_RADIUS;
-    const strength = isSameTeam ? SQUAD_STEER_STRENGTH : STEER_STRENGTH;
+    const isTeammate = other.teamId === selfTeamId;
+    const radius = isTeammate ? TEAMMATE_STEER_RADIUS : OPPONENT_STEER_RADIUS;
+    const strength = isTeammate
+      ? TEAMMATE_STEER_STRENGTH
+      : OPPONENT_STEER_STRENGTH;
 
     if (d < radius && d > 0) {
       const push = strength * (1 - d / radius);
@@ -46,8 +48,9 @@ export function steerAroundPlayers(
 }
 
 /**
- * Post-movement separation pass — pushes apart overlapping players.
+ * Post-movement separation — pushes overlapping players apart.
  * Ball carrier has right of way.
+ * Exception: teammates both tackling same opponent can get close.
  */
 export function resolveSeparation(players: Player[]): Player[] {
   const result = players.map((p) => ({ ...p }));
@@ -57,11 +60,12 @@ export function resolveSeparation(players: Player[]): Player[] {
       const a = result[i];
       const b = result[j];
 
+      const isTeammate = a.teamId === b.teamId;
       const bothTackling =
         (a.action === "tackle" || a.action === "prep-tackle") &&
         (b.action === "tackle" || b.action === "prep-tackle");
-      const isSameTeam = a.teamId === b.teamId;
-      const minDist = isSameTeam && !bothTackling ? SQUAD_MIN_DIST : MIN_DIST;
+      const minDist =
+        isTeammate && !bothTackling ? TEAMMATE_MIN_DIST : OPPONENT_MIN_DIST;
 
       const dx = a.pos.x - b.pos.x;
       const dy = a.pos.y - b.pos.y;

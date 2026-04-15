@@ -146,7 +146,12 @@ function passToWorthyWinger(
   allSquads: Squad[],
   ball: Ball,
 ): { player: Player; ball: Ball } | null {
-  const worthy = worthyWingerSquad(allSquads, player.teamId);
+  const worthy = worthyWingerSquad(
+    allSquads,
+    player.teamId,
+    undefined,
+    player.targetSquadRole,
+  );
   if (!worthy) return null;
   const target = allPlayers.find(
     (p) =>
@@ -324,12 +329,37 @@ function tickWinger(
       };
     }
     case "move-to-take": {
+      const isLoose = ball.ownerId === null;
+      if (isLoose) {
+        const myDist = dist(player.pos, ball.pos);
+        const closerTeammate = allPlayers.some(
+          (p) =>
+            p.teamId === player.teamId &&
+            p.id !== player.id &&
+            dist(p.pos, ball.pos) < myDist,
+        );
+        if (closerTeammate) {
+          // Leave it — hold position
+          const moved = steerAndMove(
+            player,
+            player.homePos,
+            PLAYER_SPEED * 0.5,
+            allPlayers,
+          );
+          return {
+            ...player,
+            pos: clampToPitch(moved.pos),
+            angle: moved.angle,
+            action: "hold",
+          };
+        }
+      }
       const moved = directMove(player, ball.pos, PLAYER_SPEED * 0.9);
       return {
         ...player,
         pos: clampToPitch(moved.pos),
         angle: moved.angle,
-        action: "prep-tackle",
+        action: isLoose ? "prep-intercept" : "prep-tackle",
       };
     }
     default:
@@ -345,6 +375,8 @@ function tickRelay(
   allSquads: Squad[],
 ): Player {
   if (action === "keep-position") {
+    if (dist(player.pos, player.homePos) < 8)
+      return { ...player, action: "hold" };
     const moved = steerAndMove(
       player,
       player.homePos,
@@ -359,7 +391,12 @@ function tickRelay(
     };
   }
 
-  const worthy = worthyWingerSquad(allSquads, player.teamId);
+  const worthy = worthyWingerSquad(
+    allSquads,
+    player.teamId,
+    undefined,
+    player.targetSquadRole,
+  );
   if (!worthy) return player;
 
   const wingerPlayers = allPlayers.filter(
@@ -376,6 +413,8 @@ function tickRelay(
     y: (ball.pos.y + cy) / 2,
   });
 
+  if (dist(player.pos, rawTarget) < 8)
+    return { ...player, action: "move-to-space" };
   const moved = steerAndMove(
     player,
     rawTarget,
@@ -387,6 +426,7 @@ function tickRelay(
     pos: clampToPitch(moved.pos),
     angle: moved.angle,
     action: "move-to-space",
+    targetSquadRole: worthy.role,
   };
 }
 
@@ -398,7 +438,12 @@ function tickDefence(
   allSquads: Squad[],
 ): Player {
   if (action === "choose-worthy-squad") {
-    const worthy = worthyWingerSquad(allSquads, player.teamId);
+    const worthy = worthyWingerSquad(
+      allSquads,
+      player.teamId,
+      undefined,
+      player.targetSquadRole,
+    );
     if (worthy) {
       const wingerPlayers = allPlayers.filter(
         (p) => p.teamId === player.teamId && worthy.playerIds.includes(p.id),
@@ -419,6 +464,7 @@ function tickDefence(
           pos: clampToPitch(moved.pos),
           angle: moved.angle,
           action: "advance",
+          targetSquadRole: worthy.role,
         };
       }
     }
@@ -437,6 +483,39 @@ function tickDefence(
     };
   }
 
+  if (ball.ownerId === null) {
+    const myDist = dist(player.pos, ball.pos);
+    const closerTeammate = allPlayers.some(
+      (p) =>
+        p.teamId === player.teamId &&
+        p.id !== player.id &&
+        dist(p.pos, ball.pos) < myDist,
+    );
+    if (closerTeammate) {
+      const moved = steerAndMove(
+        player,
+        player.homePos,
+        PLAYER_SPEED * 0.5,
+        allPlayers,
+      );
+      return {
+        ...player,
+        pos: clampToPitch(moved.pos),
+        angle: moved.angle,
+        action: "hold",
+      };
+    }
+    const moved = directMove(player, ball.pos, PLAYER_SPEED);
+    return {
+      ...player,
+      pos: clampToPitch(moved.pos),
+      angle: moved.angle,
+      action: "prep-intercept",
+    };
+  }
+
+  if (dist(player.pos, player.homePos) < 8)
+    return { ...player, action: "defend" };
   const moved = steerAndMove(
     player,
     player.homePos,

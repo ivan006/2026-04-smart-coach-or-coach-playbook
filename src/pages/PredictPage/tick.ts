@@ -37,7 +37,7 @@ function pickupLooseBall(
     return {
       players: players.map((p) =>
         p.id === nearest!.id && p.teamId === nearest!.teamId
-          ? { ...p, hasBall: true }
+          ? { ...p, hasBall: true, action: "intercept" as const }
           : p,
       ),
       ball: { ...ball, ownerId: `${nearest.teamId}-${nearest.id}` },

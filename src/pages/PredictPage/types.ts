@@ -10,6 +10,8 @@ export type PlayerAction =
   | "prep-shoot"
   | "prep-receive"
   | "prep-pass"
+  | "prep-intercept"
+  | "intercept"
   | "prep-tackle"
   | "tackle"
   | "keep-distance"
@@ -43,7 +45,8 @@ export interface Player {
   pressure: number;
   action: PlayerAction;
   homePos: Vec2;
-  tackleCooldown: number; // ticks remaining before can tackle again (60 ticks = 1 sec)
+  tackleCooldown: number;
+  targetSquadRole?: SquadRole; // cached worthy squad target for relay/defence
 }
 
 export interface Squad {
