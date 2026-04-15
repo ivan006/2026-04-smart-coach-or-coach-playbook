@@ -37,6 +37,7 @@ export function execPass(
   target: Player,
   ball: Ball,
 ): { player: Player; ball: Ball } {
+  if (target.teamId !== passer.teamId) return { player: passer, ball }; // safety guard
   const n = norm({
     x: target.pos.x - passer.pos.x,
     y: target.pos.y - passer.pos.y,
