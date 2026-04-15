@@ -168,8 +168,8 @@ export default function ActPage() {
     const backOrigin = dir === 1 ? 3 : 10;
     const fwdOrigin = dir === 1 ? 10 : 3;
 
-    const tiltOffset = (y: number) =>
-      Math.round(Math.tan((15 * Math.PI) / 180) * (9 - y));
+    const tiltOffset = (distFromAxis: number) =>
+      Math.round(Math.tan((15 * Math.PI) / 180) * distFromAxis);
     return team.map((p) => {
       let x = p.x;
       if (compress === "back" && p.id !== 1)
@@ -177,8 +177,8 @@ export default function ActPage() {
       if (compress === "fwd" && p.id !== 1)
         x = Math.round(fwdOrigin + (x - fwdOrigin) * (2 / 3));
       if (stagger && (p.y <= 3 || p.y >= 7)) x = x + dir;
-      if (tiltTop && p.id !== 1) x = x + tiltOffset(p.y) * dir;
-      if (tiltBottom && p.id !== 1) x = x + tiltOffset(9 - p.y) * dir;
+      if (tiltTop && p.id !== 1) x = x + tiltOffset(8 - p.y) * dir;
+      if (tiltBottom && p.id !== 1) x = x + tiltOffset(p.y - 2) * dir;
       let y = p.y;
       if (compressY === "left" && p.id !== 1)
         y = Math.round(2 + (y - 2) * (2 / 3));
