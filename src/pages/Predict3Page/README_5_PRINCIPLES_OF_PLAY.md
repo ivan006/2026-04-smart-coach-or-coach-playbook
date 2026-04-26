@@ -1,20 +1,20 @@
-# SoccerSim Mechanism Centrifuge
+# SoccerSim Method Centrifuge
 
-> Classification of the mechanisms extracted from `README_3_CODE_NOTES.md`.
+> Classification of the methods extracted from `README_3_CODE_NOTES.md`.
 
-This document centrifuges the old Cyrus mechanisms into genetic vials. It is not a new football theory and not yet an implementation design.
+This document centrifuges the old Cyrus methods into genetic vials. It is not a new football theory and not yet an implementation design.
 
 The discipline:
 
 ```text
-old mechanism -> mechanism shape -> genetic vial(s) -> later translation
+old method -> method shape -> genetic vial(s) -> later translation
 ```
 
-Do not invent behaviours to fill a vial. A vial only stores mechanisms already observed in the old files.
+Do not invent behaviours to fill a vial. A vial only stores methods already observed in the old files.
 
 ---
 
-## Mechanism Shapes
+## Method Shapes
 
 | Shape | Meaning |
 | --- | --- |
@@ -34,14 +34,20 @@ Do not invent behaviours to fill a vial. A vial only stores mechanisms already o
 | Vial | Meaning |
 | --- | --- |
 | World facts | What the old system knows or predicts |
-| Progressive actions | Advance our state or obstruct opponent progress |
-| Combative actions | Directly attack or defend goal danger |
-| Combative preparation actions | Move into place to attack or defend goal danger |
-| Possessive actions | Win, keep, or protect ball ownership |
-| Circulation actions | Move the ball between teammates |
-| Circulation preparation actions | Prepare or deny ball circulation |
+| Progressive actions - advance team to goals | Move our team state toward the opponent goal |
+| Progressive actions - obstruct enemy advance | Prevent the opponent from moving toward our goal |
+| Combative actions - attack goals with shot | Directly threaten the opponent goal with a shot |
+| Combative actions - defend goals from shot | Directly protect our goal from a shot or shot-like danger |
+| Combative preparation actions - move to attack goals | Move into a position that prepares goal attack |
+| Combative preparation actions - move to defend goals | Move into a position that prepares goal defense |
+| Possessive actions - tackle his ball | Win or recover opponent/loose possession |
+| Possessive actions - protect my ball | Keep or protect our possession |
+| Circulation actions - pass | Move the ball from one teammate to another |
+| Circulation actions - receive | Become or complete the receiving side of circulation |
+| Circulation preparation actions - move to intercept enemy pass | Move to deny or cut off enemy circulation |
+| Circulation preparation actions - move to evade interception | Move to make our circulation safer from interception |
 
-Mechanisms can belong to more than one vial.
+Methods can belong to more than one vial.
 
 ---
 
@@ -49,241 +55,239 @@ Mechanisms can belong to more than one vial.
 
 ### 1. `strategy.cpp`
 
-| Mechanism | Shape | Vial(s) |
-| --- | --- | --- |
-| Formation config loading for normal, offense, defense, set plays, goalie states | Spatial reference | World facts, combative preparation |
-| Role factory and role number assignment | Spatial reference | World facts |
-| Goalie uniform-number detection/validation | World fact | World facts, combative actions |
-| Situation detection from self/teammate/opponent intercept steps | World fact, evaluator | World facts, possessive actions |
-| Normal/offense/defense situation selection | Priority chain / phase mechanism | Progressive actions, possessive actions |
-| Current formation selection by situation/game mode | Spatial reference | Combative preparation, circulation preparation |
-| Ball-step projection before selecting home positions | World fact | World facts, progressive actions |
-| Formation home-position lookup/interpolation | Spatial reference | Combative preparation, circulation preparation |
-| Role-side and position-type assignment | Spatial reference | World facts |
-| Dynamic dash power by role, field zone, and stamina | Evaluator, stabilizer | Possessive actions, combative preparation |
-| Field-zone compression/expansion from formation data | Spatial reference | Progressive actions, combative preparation |
+| Method name | Description | Shape | Vial(s) |
+| --- | --- | --- | --- |
+| `loadFormations` | Loads normal, offense, defense, setplay, and goalie-state formation configs | Spatial reference | World facts; combative preparation actions - move to defend goals |
+| `assignRoles` | Creates role objects and assigns role numbers/types | Spatial reference | World facts |
+| `detectGoalie` | Detects and validates the goalie uniform number | World fact | World facts; combative actions - defend goals from shot |
+| `compareInterceptSteps` | Reads self, teammate, and opponent intercept steps | World fact, evaluator | World facts; possessive actions - tackle his ball |
+| `selectSituation` | Chooses normal/offense/defense situation from intercept comparison | Priority chain | Progressive actions - advance team to goals; progressive actions - obstruct enemy advance |
+| `selectCurrentFormation` | Picks formation by situation and game mode | Spatial reference | Combative preparation actions - move to attack goals; combative preparation actions - move to defend goals |
+| `projectBallStep` | Projects ball step before home-position lookup | World fact | World facts; progressive actions - advance team to goals |
+| `lookupHomePosition` | Gets interpolated home position from formation data | Spatial reference | Combative preparation actions - move to defend goals; circulation preparation actions - move to evade interception |
+| `assignPositionType` | Tracks role side/position type | Spatial reference | World facts |
+| `calculateDashPower` | Adjusts dash power by role, field zone, and stamina | Evaluator, stabilizer | Possessive actions - protect my ball; combative preparation actions - move to defend goals |
+| `compressOrExpandShape` | Formation data compresses in own half and expands in opponent half | Spatial reference | Progressive actions - advance team to goals; progressive actions - obstruct enemy advance |
 
 ### 2. `bhv_basic_move.cpp`
 
-| Mechanism | Shape | Vial(s) |
-| --- | --- | --- |
-| Outfield priority chain: tackle -> intercept -> block -> offside trap -> unmark -> home position | Priority chain | Possessive, progressive, circulation preparation, combative preparation |
-| Basic tackle attempt before other movement | Execution behaviour, gate | Possessive actions |
-| Intercept decision using intercept-table race | Gate, execution behaviour | Possessive actions, progressive actions |
-| Role-aware pressing/intercept margins | Parameterized evaluator | Possessive actions, progressive actions |
-| Defensive block delegation | Priority-chain branch | Progressive actions, combative preparation |
-| Offside-trap trigger | Priority-chain branch, spatial reference | Progressive actions, combative preparation |
-| Unmark branch | Priority-chain branch | Circulation preparation, combative preparation |
-| Go-to-home fallback | Spatial reference, execution behaviour | Combative preparation, circulation preparation |
-| Dynamic dash power | Evaluator, stabilizer | Possessive actions, combative preparation |
-| Neck/scan behaviour while moving | Execution behaviour | World facts, circulation preparation |
+| Method name | Description | Shape | Vial(s) |
+| --- | --- | --- | --- |
+| `runOutfieldPriority` | Attempts tackle, intercept, block, offside trap, unmark, then home position | Priority chain | Possessive actions - tackle his ball; progressive actions - obstruct enemy advance; circulation preparation actions - move to evade interception |
+| `tryTackleFirst` | Attempts basic tackle before other movement | Filter / gate, execution behaviour | Possessive actions - tackle his ball |
+| `tryIntercept` | Uses intercept race to decide whether to intercept | Filter / gate, execution behaviour | Possessive actions - tackle his ball; progressive actions - obstruct enemy advance |
+| `applyPressingMargin` | Uses role-aware margins for pressing/intercept decisions | Evaluator | Possessive actions - tackle his ball; progressive actions - obstruct enemy advance |
+| `tryBlock` | Delegates to defensive block behaviour | Priority-chain branch | Progressive actions - obstruct enemy advance; combative preparation actions - move to defend goals |
+| `tryOffsideTrap` | Steps line forward in specific defensive contexts | Priority-chain branch, spatial reference | Progressive actions - obstruct enemy advance; combative preparation actions - move to defend goals |
+| `tryUnmark` | Runs unmark behaviour when movement can create receiving value | Priority-chain branch | Circulation preparation actions - move to evade interception |
+| `goHome` | Falls back to formation home position | Spatial reference, execution behaviour | Combative preparation actions - move to defend goals; circulation preparation actions - move to evade interception |
+| `setMoveDashPower` | Chooses dash power for the movement action | Evaluator, stabilizer | Possessive actions - protect my ball; combative preparation actions - move to defend goals |
+| `scanWhileMoving` | Uses neck/scan behaviours while moving | Execution behaviour | World facts; circulation preparation actions - move to evade interception |
 
 ### 3. `bhv_basic_block.cpp`
 
-| Mechanism | Shape | Vial(s) |
-| --- | --- | --- |
-| Predict opponent dribble path 40 cycles ahead | World fact, candidate generator | World facts, progressive actions |
-| Simulate candidate opponent dribble directions | Candidate generator | Progressive actions |
-| Score opponent dribble directions by forward danger and own-goal proximity | Evaluator | Progressive actions, combative preparation |
-| Select first teammate able to intercept/block predicted route | Evaluator, gate | Possessive actions, progressive actions |
-| Move to blocking point | Execution behaviour | Progressive actions, combative preparation |
-| Turn/face ball while blocking | Execution behaviour | World facts, possessive actions |
-| Tackle check inside block behaviour | Gate, execution behaviour | Possessive actions |
+| Method name | Description | Shape | Vial(s) |
+| --- | --- | --- | --- |
+| `predictOpponentDribblePath` | Simulates opponent dribble path about 40 cycles ahead | World fact, candidate generator | World facts; progressive actions - obstruct enemy advance |
+| `sampleOpponentDribbleDirections` | Generates possible opponent dribble routes | Candidate generator | Progressive actions - obstruct enemy advance |
+| `scoreDribbleDanger` | Scores routes by forward danger and proximity to own goal | Evaluator | Progressive actions - obstruct enemy advance; combative preparation actions - move to defend goals |
+| `selectFirstBlocker` | Finds the first teammate able to intercept/block the route | Evaluator, filter / gate | Possessive actions - tackle his ball; progressive actions - obstruct enemy advance |
+| `moveToBlockPoint` | Moves to the selected blocking point | Execution behaviour | Progressive actions - obstruct enemy advance; combative preparation actions - move to defend goals |
+| `faceBallWhileBlocking` | Turns or scans while blocking | Execution behaviour | World facts; possessive actions - tackle his ball |
+| `checkTackleInsideBlock` | Attempts tackle if the block situation allows it | Filter / gate, execution behaviour | Possessive actions - tackle his ball |
 
 ### 4. `bhv_unmark.cpp`
 
-| Mechanism | Shape | Vial(s) |
-| --- | --- | --- |
-| DNN-assisted pass-chain prediction | World fact, evaluator | World facts, circulation preparation |
-| Local candidate-position sampling around player | Candidate generator | Circulation preparation |
-| Distance ring sampling from roughly 2 to 7 units | Candidate generator | Circulation preparation |
-| Angle sampling around player | Candidate generator | Circulation preparation |
-| Pass-quality evaluation for sampled point | Evaluator | Circulation preparation, circulation actions |
-| Nearest-opponent distance reward | Evaluator | Circulation preparation, possessive actions |
-| Turn-cost penalty | Evaluator | Circulation preparation, possessive actions |
-| Forward-direction bonus | Evaluator | Progressive actions, combative preparation |
-| Stamina gate by role/field zone | Gate, stabilizer | Possessive actions, circulation preparation |
-| Role/zone gating of unmark behaviour | Gate | Circulation preparation, combative preparation |
-| Position cache for about 5 cycles | Stabilizer | Circulation preparation |
-| Intention receive setup | Stabilizer, execution support | Circulation actions, circulation preparation |
+| Method name | Description | Shape | Vial(s) |
+| --- | --- | --- | --- |
+| `predictPassChainWithDnn` | Uses DNN-assisted pass-chain prediction | World fact, evaluator | World facts; circulation preparation actions - move to evade interception |
+| `sampleLocalReceivePositions` | Samples candidate positions around the player | Candidate generator | Circulation preparation actions - move to evade interception |
+| `sampleDistanceRings` | Samples roughly 2-7 unit distances | Candidate generator | Circulation preparation actions - move to evade interception |
+| `sampleAngles` | Samples angles around the player | Candidate generator | Circulation preparation actions - move to evade interception |
+| `scorePassQuality` | Scores whether a sampled point is passable | Evaluator | Circulation preparation actions - move to evade interception; circulation actions - receive |
+| `rewardOpponentSeparation` | Rewards distance from nearest opponent | Evaluator | Circulation preparation actions - move to evade interception; possessive actions - protect my ball |
+| `penalizeTurnCost` | Penalizes receiving points that cost too much turning | Evaluator | Circulation preparation actions - move to evade interception; possessive actions - protect my ball |
+| `rewardForwardDirection` | Rewards forward value in the receiving point | Evaluator | Progressive actions - advance team to goals; combative preparation actions - move to attack goals |
+| `gateByStaminaRoleZone` | Prevents unmarking when stamina, role, or zone says no | Filter / gate, stabilizer | Possessive actions - protect my ball; circulation preparation actions - move to evade interception |
+| `cacheUnmarkTarget` | Keeps selected unmark point for several cycles | Stabilizer | Circulation preparation actions - move to evade interception |
+| `setupReceiveIntention` | Prepares intention to receive at the target | Stabilizer, execution support | Circulation actions - receive; circulation preparation actions - move to evade interception |
 
 ### 5. `strict_check_pass_generator.cpp`
 
-| Mechanism | Shape | Vial(s) |
-| --- | --- | --- |
-| Passer state update | World fact | World facts, circulation actions |
-| Receiver state update | World fact | World facts, circulation actions |
-| Opponent state update | World fact | World facts, circulation actions |
-| Direct pass candidate to receiver inertia position | Candidate generator | Circulation actions |
-| Leading pass candidate around receiver | Candidate generator | Circulation actions, progressive actions |
-| Leading-pass angle/distance grid | Candidate generator | Circulation actions, circulation preparation |
-| Through pass into space behind defense | Candidate generator | Circulation actions, progressive actions, combative preparation |
-| Offside filter | Filter / gate | Circulation actions |
-| Out-of-bounds filter | Filter / gate | Circulation actions |
-| Dangerous backpass-area filter | Filter / gate | Possessive actions, combative actions |
-| Tackling-receiver filter | Filter / gate | Possessive actions, circulation actions |
-| Receiver-too-far filter | Filter / gate | Circulation actions |
-| Receiver arrival prediction | World fact, evaluator | Circulation actions, possessive actions |
-| Opponent reach prediction | World fact, evaluator | Circulation actions, possessive actions |
-| Ball trajectory simulation | World fact | Circulation actions |
-| Pass safety check | Evaluator, gate | Circulation actions, possessive actions |
-| Duplicate/same-point candidate control | Stabilizer | Circulation actions |
-| Candidate sorting by proximity to opponent goal | Evaluator | Progressive actions, combative preparation |
-| Success/failure debug classification | Evaluator support | World facts |
+| Method name | Description | Shape | Vial(s) |
+| --- | --- | --- | --- |
+| `updatePasserState` | Builds current passer facts | World fact | World facts; circulation actions - pass |
+| `updateReceiverState` | Builds receiver facts | World fact | World facts; circulation actions - receive |
+| `updateOpponentState` | Builds opponent reach facts | World fact | World facts; circulation preparation actions - move to intercept enemy pass |
+| `generateDirectPass` | Generates pass to receiver inertia/current position | Candidate generator | Circulation actions - pass; circulation actions - receive |
+| `generateLeadingPass` | Generates pass into space around receiver | Candidate generator | Circulation actions - pass; circulation actions - receive; progressive actions - advance team to goals |
+| `sampleLeadingGrid` | Samples lead-pass angles and distances | Candidate generator | Circulation preparation actions - move to evade interception |
+| `generateThroughPass` | Generates pass behind defense into space | Candidate generator | Circulation actions - pass; progressive actions - advance team to goals; combative preparation actions - move to attack goals |
+| `filterOffside` | Rejects offside pass targets | Filter / gate | Circulation actions - pass |
+| `filterOutOfBounds` | Rejects targets outside the field | Filter / gate | Circulation actions - pass |
+| `filterDangerousBackpass` | Rejects dangerous backpass areas | Filter / gate | Possessive actions - protect my ball; combative actions - defend goals from shot |
+| `filterTacklingReceiver` | Rejects receivers in tackling danger | Filter / gate | Possessive actions - protect my ball; circulation actions - receive |
+| `filterReceiverTooFar` | Rejects receivers beyond range | Filter / gate | Circulation actions - pass |
+| `predictReceiverArrival` | Estimates when receiver reaches the pass | World fact, evaluator | Circulation actions - receive; possessive actions - protect my ball |
+| `predictOpponentReach` | Estimates when opponents can reach/intercept | World fact, evaluator | Circulation preparation actions - move to intercept enemy pass; possessive actions - protect my ball |
+| `simulateBallTrajectory` | Simulates ball path for pass safety | World fact | Circulation actions - pass |
+| `checkPassSafety` | Checks whether pass survives opponent reach | Evaluator, filter / gate | Circulation actions - pass; possessive actions - protect my ball |
+| `dedupeSamePointCandidates` | Controls duplicate pass candidates on the same point | Stabilizer | Circulation actions - pass |
+| `sortByGoalProximity` | Sorts candidates by closeness to opponent goal | Evaluator | Progressive actions - advance team to goals; combative preparation actions - move to attack goals |
 
 ### 6. `shoot_generator.cpp`
 
-| Mechanism | Shape | Vial(s) |
-| --- | --- | --- |
-| Shooting activation by range near opponent goal | Gate | Combative actions |
-| Goal-mouth target sampling | Candidate generator | Combative actions |
-| 25 target-point search across goal width | Candidate generator | Combative actions |
-| Kick speed / one-step feasibility search | Candidate generator, gate | Combative actions, possessive actions |
-| One-kick bonus | Evaluator | Combative actions |
-| Goalie-unreachable bonus | Evaluator | Combative actions |
-| Opponent-unreachable bonus | Evaluator | Combative actions |
-| Gaussian goalie angle-rate scoring | Evaluator | Combative actions |
-| Gaussian y-rate / centrality scoring | Evaluator | Combative actions |
-| Blocked-course rejection | Filter / gate | Combative actions |
-| Shot-course success/failure classification | Evaluator support | Combative actions |
+| Method name | Description | Shape | Vial(s) |
+| --- | --- | --- | --- |
+| `gateShootByRange` | Activates shooting only near enough to goal | Filter / gate | Combative actions - attack goals with shot |
+| `sampleGoalTargets` | Samples target points across goal mouth | Candidate generator | Combative actions - attack goals with shot |
+| `searchTwentyFiveTargets` | Uses dense target search across goal width | Candidate generator | Combative actions - attack goals with shot |
+| `searchKickSpeed` | Searches kick speed / one-step feasibility | Candidate generator, filter / gate | Combative actions - attack goals with shot; possessive actions - protect my ball |
+| `scoreOneKickBonus` | Rewards one-kick shot feasibility | Evaluator | Combative actions - attack goals with shot |
+| `scoreGoalieUnreachable` | Rewards shots the goalie cannot reach | Evaluator | Combative actions - attack goals with shot |
+| `scoreOpponentUnreachable` | Rewards shots opponents cannot block | Evaluator | Combative actions - attack goals with shot |
+| `scoreGoalieAngleRate` | Scores shot target by goalie angle relation | Evaluator | Combative actions - attack goals with shot |
+| `scoreGoalYRate` | Scores target centrality / y-rate | Evaluator | Combative actions - attack goals with shot |
+| `rejectBlockedCourse` | Rejects blocked shot courses | Filter / gate | Combative actions - attack goals with shot |
 
 ### 7. `short_dribble_generator.cpp`
 
-| Mechanism | Shape | Vial(s) |
-| --- | --- | --- |
-| 16-direction dribble sampling | Candidate generator | Possessive actions, progressive actions |
-| Field-zone direction filtering | Filter / gate | Possessive actions, progressive actions |
-| Own-half forward-angle restriction | Filter / gate | Possessive actions |
-| Deep-own-half stricter forward-angle restriction | Filter / gate | Possessive actions, combative actions |
-| Player path simulation per dribble direction | World fact, evaluator | Possessive actions |
-| Opponent reach/safety check | Evaluator, gate | Possessive actions |
-| Uncertainty buffer for opponent safety | Parameterized evaluator | Possessive actions |
-| Tackling-state bonus/penalty in safety | Parameterized evaluator | Possessive actions |
-| Candidate sorting by goal proximity | Evaluator | Progressive actions, combative preparation |
+| Method name | Description | Shape | Vial(s) |
+| --- | --- | --- | --- |
+| `sampleDribbleDirections` | Samples 16 dribble directions | Candidate generator | Possessive actions - protect my ball; progressive actions - advance team to goals |
+| `filterByFieldZone` | Filters dribble direction by field zone | Filter / gate | Possessive actions - protect my ball; progressive actions - advance team to goals |
+| `restrictOwnHalfAngle` | In own half, only allows mostly forward directions | Filter / gate | Possessive actions - protect my ball |
+| `restrictDeepOwnHalfAngle` | Deep own half uses stricter forward angle | Filter / gate | Possessive actions - protect my ball; combative actions - defend goals from shot |
+| `simulateCarryPath` | Simulates player path for a dribble direction | World fact, evaluator | Possessive actions - protect my ball |
+| `checkOpponentReachSafety` | Checks whether opponents can stop the carry | Evaluator, filter / gate | Possessive actions - protect my ball |
+| `applyUncertaintyBuffer` | Adds safety margin for opponent uncertainty | Evaluator | Possessive actions - protect my ball |
+| `adjustForTacklingState` | Accounts for opponent tackling state | Evaluator | Possessive actions - protect my ball |
+| `sortDribbleByGoalProximity` | Sorts dribbles by proximity to opponent goal | Evaluator | Progressive actions - advance team to goals; combative preparation actions - move to attack goals |
 
 ### 8. `cross_generator.cpp`
 
-| Mechanism | Shape | Vial(s) |
-| --- | --- | --- |
-| Cross activation only near opponent goal | Gate | Combative actions, circulation actions |
-| Receiver-point sampling for cross | Candidate generator | Circulation actions, combative preparation |
-| Multi-distance and multi-angle receive sampling | Candidate generator | Circulation actions, circulation preparation |
-| Ball trajectory safety check per cycle | Evaluator, gate | Circulation actions, possessive actions |
-| Opponent reach check along cross path | Evaluator, gate | Circulation actions, possessive actions |
-| Best angle-width selection | Evaluator | Circulation actions, combative actions |
-| Maximum angular separation from nearest defender | Evaluator | Combative actions, circulation actions |
+| Method name | Description | Shape | Vial(s) |
+| --- | --- | --- | --- |
+| `gateCrossByGoalDistance` | Only generates crosses near opponent goal | Filter / gate | Combative preparation actions - move to attack goals; circulation actions - pass |
+| `sampleCrossReceivePoints` | Samples receive points for cross targets | Candidate generator | Circulation actions - receive; combative preparation actions - move to attack goals |
+| `sampleCrossAnglesDistances` | Samples multiple receive distances and angles | Candidate generator | Circulation preparation actions - move to evade interception |
+| `simulateCrossTrajectory` | Simulates ball path cycle by cycle | World fact, evaluator | Circulation actions - pass |
+| `checkCrossOpponentReach` | Checks opponent reach along cross path | Evaluator, filter / gate | Circulation preparation actions - move to intercept enemy pass; possessive actions - protect my ball |
+| `selectMaxAngleWidth` | Selects cross with best angular separation | Evaluator | Combative actions - attack goals with shot; circulation actions - pass |
+| `measureNearestDefenderSeparation` | Measures separation from nearest defender | Evaluator | Circulation actions - receive; combative preparation actions - move to attack goals |
 
 ### 9. `bhv_goalie_basic_move.cpp`
 
-| Mechanism | Shape | Vial(s) |
-| --- | --- | --- |
-| Keeper position on line between ball and point behind goal | Spatial reference | Combative preparation |
-| Clamp keeper position to goal/defend line | Spatial reference, gate | Combative preparation |
-| Keeper priority chain: tackle -> deep cross prep -> stop -> emergency dash -> X correction -> body-angle correction -> Y adjustment | Priority chain | Combative actions, combative preparation, possessive actions |
-| Keeper tackle attempt | Execution behaviour, gate | Possessive actions, combative actions |
-| Deep-cross preparation | Priority-chain branch | Combative preparation, circulation preparation |
-| Stop-dash behaviour | Execution behaviour, stabilizer | Combative preparation |
-| Emergency dash | Execution behaviour | Combative actions |
-| Correct X position | Execution behaviour, spatial reference | Combative preparation |
-| Correct body angle | Execution behaviour | Combative preparation |
-| Correct Y position | Execution behaviour, spatial reference | Combative preparation |
+| Method name | Description | Shape | Vial(s) |
+| --- | --- | --- | --- |
+| `setKeeperLinePosition` | Positions keeper on line between ball and point behind goal | Spatial reference | Combative preparation actions - move to defend goals |
+| `clampKeeperToDefendLine` | Clamps keeper position to goal/defend line | Spatial reference, filter / gate | Combative preparation actions - move to defend goals |
+| `runKeeperPriority` | Attempts tackle, deep cross prep, stop, emergency dash, X/body/Y corrections | Priority chain | Combative actions - defend goals from shot; possessive actions - tackle his ball; combative preparation actions - move to defend goals |
+| `tryKeeperTackle` | Attempts keeper tackle | Execution behaviour, filter / gate | Possessive actions - tackle his ball; combative actions - defend goals from shot |
+| `prepareForDeepCross` | Prepares keeper for deep cross danger | Priority-chain branch | Combative preparation actions - move to defend goals; circulation preparation actions - move to intercept enemy pass |
+| `stopDash` | Stops current dash motion | Execution behaviour, stabilizer | Combative preparation actions - move to defend goals |
+| `emergencyDash` | Uses emergency dash toward danger | Execution behaviour | Combative actions - defend goals from shot |
+| `correctKeeperX` | Corrects keeper X position | Execution behaviour, spatial reference | Combative preparation actions - move to defend goals |
+| `correctKeeperBodyAngle` | Corrects keeper body angle | Execution behaviour | Combative preparation actions - move to defend goals |
+| `correctKeeperY` | Corrects keeper Y position | Execution behaviour, spatial reference | Combative preparation actions - move to defend goals |
 
 ### 10. `bhv_goalie_chase_ball.cpp`
 
-| Mechanism | Shape | Vial(s) |
-| --- | --- | --- |
-| Penalty-area trajectory intersection check | Gate, world fact | Combative actions |
-| Keeper arrival-before-opponent check | Gate, evaluator | Possessive actions, combative actions |
-| Confirmed shot-moving-toward-goal check | Gate, world fact | Combative actions |
-| Active interception catch-point calculation | World fact | Possessive actions, combative actions |
-| Reject chase if intercept point outside penalty area | Gate | Combative actions |
-| Reject chase if opponent arrives faster | Gate | Possessive actions |
-| Ball-line intersection with vertical defend line | Spatial reference | Combative preparation |
-| Slide-step positioning from ball-line intersection | Execution behaviour, spatial reference | Combative preparation |
-| Chase/intercept execution | Execution behaviour | Possessive actions, combative actions |
+| Method name | Description | Shape | Vial(s) |
+| --- | --- | --- | --- |
+| `checkPenaltyTrajectory` | Checks if ball trajectory enters penalty area | World fact, filter / gate | Combative actions - defend goals from shot |
+| `checkKeeperBeatsOpponent` | Requires keeper arrival before opponent | Evaluator, filter / gate | Possessive actions - tackle his ball; combative actions - defend goals from shot |
+| `checkShotMovingToGoal` | Detects confirmed shot moving toward goal | World fact, filter / gate | Combative actions - defend goals from shot |
+| `calculateCatchPoint` | Computes active interception catch point | World fact | Possessive actions - tackle his ball; combative actions - defend goals from shot |
+| `rejectOutsidePenalty` | Rejects chase outside penalty area | Filter / gate | Combative actions - defend goals from shot |
+| `rejectOpponentFirst` | Rejects chase if opponent arrives faster | Filter / gate | Possessive actions - tackle his ball |
+| `intersectDefendLine` | Finds ball-line intersection with vertical defend line | Spatial reference | Combative preparation actions - move to defend goals |
+| `slideStepToLine` | Uses slide-step positioning from intersection | Execution behaviour, spatial reference | Combative preparation actions - move to defend goals |
+| `executeKeeperChase` | Chases/intercepts ball | Execution behaviour | Possessive actions - tackle his ball; combative actions - defend goals from shot |
 
 ### 11. `sample_field_evaluator.cpp`
 
-| Mechanism | Shape | Vial(s) |
-| --- | --- | --- |
-| Whole-state scoring | Evaluator | World facts, progressive actions |
-| Ball x-position score | Evaluator | Progressive actions |
-| Opponent-pressure weighted ball value | Evaluator | Possessive actions, progressive actions |
-| Voronoi best-open-space point | Evaluator, spatial reference | Progressive actions, circulation preparation |
-| Offside-line gap detection | Evaluator, spatial reference | Circulation actions, progressive actions |
-| Free situation near offside line bonus | Evaluator | Progressive actions, combative preparation |
-| Shoot opportunity bonus | Evaluator | Combative actions |
-| Teammate/opponent sector checks | World fact, evaluator | World facts, circulation preparation |
+| Method name | Description | Shape | Vial(s) |
+| --- | --- | --- | --- |
+| `scoreWholeState` | Scores a predicted game state | Evaluator | World facts; progressive actions - advance team to goals |
+| `scoreBallX` | Scores ball x-position | Evaluator | Progressive actions - advance team to goals |
+| `weightByOpponentPressure` | Weights ball value by opponent pressure | Evaluator | Possessive actions - protect my ball; progressive actions - advance team to goals |
+| `findVoronoiOpenSpace` | Finds best open-space point using Voronoi reasoning | Evaluator, spatial reference | Circulation preparation actions - move to evade interception; progressive actions - advance team to goals |
+| `detectOffsideLineGap` | Finds useful gaps near offside line | Evaluator, spatial reference | Circulation actions - pass; progressive actions - advance team to goals |
+| `bonusFreeOffsideLineSituation` | Adds bonus for free situation near offside line | Evaluator | Progressive actions - advance team to goals; combative preparation actions - move to attack goals |
+| `bonusShootOpportunity` | Adds large bonus for shoot opportunity | Evaluator | Combative actions - attack goals with shot |
+| `checkPlayerSectors` | Checks teammates/opponents in sectors | World fact, evaluator | World facts; circulation preparation actions - move to evade interception |
 
 ### 12. `field_analyzer.cpp`
 
-| Mechanism | Shape | Vial(s) |
-| --- | --- | --- |
-| Predict player turn cycle | World fact, evaluator | World facts, possessive actions |
-| Predict self reach cycle with stamina model | World fact, evaluator | Possessive actions |
-| Predict generic player reach cycle | World fact, evaluator | Possessive actions, circulation actions |
-| Estimate minimum reach cycle for ball trajectory | World fact, evaluator | Possessive actions, circulation actions |
-| Ball-field-line cross point calculation | Spatial reference | World facts, circulation actions |
-| Can-shoot-from check | Evaluator, gate | Combative actions |
-| Goal angle sampling across goal width | Candidate generator, evaluator | Combative actions |
-| Opponent hide-angle / blocking-angle model | World fact, evaluator | Combative actions |
-| Max shooting-angle gap threshold | Gate, evaluator | Combative actions |
-| Opponent-can-shoot-from check | Evaluator, gate | Combative actions, combative preparation |
-| Teammate blocking-angle model against opponent shot | Evaluator | Combative preparation |
-| Pass-count estimation | Evaluator | Circulation actions |
-| Ball moving toward goal check | World fact, gate | Combative actions |
-| Near-goal next-action search condition | Gate | Combative actions, progressive actions |
-| Over-offside-line final-action condition | Gate | Progressive actions, circulation actions |
-| Blocker selection by attack angle | Evaluator, spatial reference | Progressive actions, combative preparation |
-| Voronoi diagram update for pass/open-space reasoning | World fact, spatial reference | World facts, circulation preparation |
+| Method name | Description | Shape | Vial(s) |
+| --- | --- | --- | --- |
+| `predictTurnCycle` | Predicts cycles needed to turn | World fact, evaluator | World facts; possessive actions - protect my ball |
+| `predictSelfReachCycle` | Predicts self reach cycle with stamina model | World fact, evaluator | Possessive actions - tackle his ball; possessive actions - protect my ball |
+| `predictPlayerReachCycle` | Predicts generic player reach cycle | World fact, evaluator | Possessive actions - tackle his ball; circulation actions - receive |
+| `estimateMinReachCycle` | Estimates minimum cycle to reach ball trajectory | World fact, evaluator | Possessive actions - tackle his ball; circulation preparation actions - move to intercept enemy pass |
+| `getBallFieldLineCrossPoint` | Finds line/field crossing for ball path | Spatial reference | World facts; circulation actions - pass |
+| `canShootFrom` | Determines if a position can shoot | Evaluator, filter / gate | Combative actions - attack goals with shot |
+| `sampleGoalAngles` | Samples angles across goal width | Candidate generator, evaluator | Combative actions - attack goals with shot |
+| `modelOpponentHideAngle` | Models opponent blocking/hide angle | World fact, evaluator | Combative actions - attack goals with shot |
+| `thresholdMaxShotGap` | Requires enough open shooting angle | Evaluator, filter / gate | Combative actions - attack goals with shot |
+| `opponentCanShootFrom` | Determines if opponent can shoot from a point | Evaluator, filter / gate | Combative actions - defend goals from shot; combative preparation actions - move to defend goals |
+| `modelTeammateBlockAngle` | Models teammate blocking angle against opponent shot | Evaluator | Combative preparation actions - move to defend goals |
+| `countPassOptions` | Counts pass options from a state | Evaluator | Circulation actions - pass |
+| `checkBallMovingToGoal` | Checks if ball is moving toward goal | World fact, filter / gate | Combative actions - defend goals from shot |
+| `gateNearGoalNextAction` | Near opponent goal, searches for next action such as shoot | Filter / gate | Combative actions - attack goals with shot; progressive actions - advance team to goals |
+| `gateOverOffsideLineFinalAction` | Treats over-offside-line action as final | Filter / gate | Progressive actions - advance team to goals; circulation actions - pass |
+| `selectBlockerByAttackAngle` | Selects blocker using attack angle | Evaluator, spatial reference | Progressive actions - obstruct enemy advance; combative preparation actions - move to defend goals |
+| `updatePassVoronoi` | Updates Voronoi diagram for pass/open-space reasoning | World fact, spatial reference | World facts; circulation preparation actions - move to evade interception |
 
 ---
 
 ## Non-Critical Files
 
-| File/group | Classification |
-| --- | --- |
-| `role_*.cpp` | Role boilerplate; role intelligence is mostly formation/planner-driven |
-| `pass.cpp`, `shoot.cpp`, `dribble.cpp`, `positioning.cpp` | Data containers for action parameters |
-| `DEState.cpp` | Empty/include-only |
-| `offensive_data_extractor.cpp` | Training-data extraction, not behaviour principle |
-| `formations-dt/*.conf` | Spatial reference data; useful as formation evidence, not a decision mechanism |
-| `setplay/` | Out of initial open-play scope |
+| Method name | Description | Shape | Vial(s) |
+| --- | --- | --- | --- |
+| `roleFiles` | Role files are mostly boilerplate; role intelligence is formation/planner-driven | Data/boilerplate | World facts |
+| `actionDataClasses` | `pass.cpp`, `shoot.cpp`, `dribble.cpp`, and `positioning.cpp` store parameters | Data container | Depends on action |
+| `deState` | Empty/include-only file | None | None |
+| `offensiveDataExtractor` | Extracts DNN training features, not live behaviour | Data extraction | World facts |
+| `formationTables` | Formation configs provide spatial reference data | Spatial reference | Combative preparation actions - move to attack goals; combative preparation actions - move to defend goals |
+| `setPlayFolder` | Setplay behaviours are outside initial open-play scope | Out of scope | Out of scope |
 
 ---
 
-## Vial Cross-Cuts
+## Cross-Cuts
 
-| Mechanism family | Primary shape | Common vials |
+| Method family | Primary shape | Common vials |
 | --- | --- | --- |
-| Intercept race | World fact + evaluator | Possessive, circulation, combative |
-| Candidate sampling | Candidate generator | Depends on target: pass, shot, dribble, unmark |
-| Safety rejection | Filter / gate | Possessive, circulation |
-| Goal-threat scoring | Evaluator | Combative, progressive |
-| Formation/home positioning | Spatial reference | Combative preparation, circulation preparation |
-| Path/trajectory prediction | World fact | Possessive, circulation, combative |
-| Stabilization gates | Stabilizer | Usually attached to circulation preparation or possession |
+| Intercept race | World fact + evaluator | Possessive actions - tackle his ball; circulation preparation actions - move to intercept enemy pass; combative actions - defend goals from shot |
+| Candidate sampling | Candidate generator | Depends on target: pass, receive, shoot, dribble, unmark |
+| Safety rejection | Filter / gate | Possessive actions - protect my ball; circulation actions - pass |
+| Goal-threat scoring | Evaluator | Combative actions - attack goals with shot; progressive actions - advance team to goals |
+| Formation/home positioning | Spatial reference | Combative preparation actions - move to attack goals; combative preparation actions - move to defend goals |
+| Path/trajectory prediction | World fact | Possessive, circulation, and combative vials |
+| Stabilization gates | Stabilizer | Usually circulation preparation or possession protection |
 
 ---
 
 ## Open Classification Questions
 
 - Is `dribble` primarily possessive protection, progressive advancement, or both depending on field zone?
-- Is `clear` best classified as combative defense, possession release, or emergency circulation?
-- Which formation/home-position mechanisms are goal-defense preparation versus generic team-shape reference?
+- Is `clear` best classified as goal defense, possession release, or emergency circulation?
+- Which formation/home-position methods are goal-defense preparation versus generic team-shape reference?
 - Which unmark candidates are only circulation preparation, and which become combative preparation because they create goal access?
-- Does the old system show real preparation counterparts for shooting or dribbling, or only for passing/receiving and defensive blocking?
+- Does the old system show real preparation methods for shooting or dribbling, or only for passing/receiving and defensive blocking?
 
 ---
 
 ## Distillation Discipline
 
-For every future extracted mechanism:
+For every future extracted method:
 
-1. Name the observed Cyrus mechanism.
-2. Identify its mechanism shape.
-3. Place it into one or more genetic vials.
-4. Record the source file.
-5. Only then decide whether SoccerSim should translate it into a query, candidate, gate, weight, or execution behaviour.
+1. Name the observed Cyrus method.
+2. Describe what it does.
+3. Identify its method shape.
+4. Place it into one or more genetic vials.
+5. Record the source file.
+6. Only then decide whether SoccerSim should translate it into a query, candidate, gate, weight, or execution behaviour.
 
 This keeps the process genetic distillation, not genetic modification.
