@@ -1,456 +1,289 @@
-# SoccerSim Principles of Play
+# SoccerSim Mechanism Centrifuge
 
-> A distillation of Cyrus2DBase decision logic into SoccerSim's EQS vocabulary.
+> Classification of the mechanisms extracted from `README_3_CODE_NOTES.md`.
 
-This document is the bridge between the code notes and the implementation. Cyrus expresses most of its intelligence as priority chains, thresholds, lookup tables, and special-case behaviours. SoccerSim should keep the soccer principles, but express them as scored candidates and reusable queries.
+This document centrifuges the old Cyrus mechanisms into genetic vials. It is not a new football theory and not yet an implementation design.
 
-The goal is not to port Cyrus. The goal is to preserve the reasons behind its choices.
-
----
-
-## Core Translation Rule
-
-Every Cyrus branch should be translated into one of three things:
-
-| Cyrus pattern                       | SoccerSim equivalent                                         |
-| ----------------------------------- | ------------------------------------------------------------ |
-| "If this situation, do this action" | Candidate action with a high contextual score                |
-| Magic threshold or margin           | Named query with tunable weight                              |
-| Formation lookup result             | Spatial candidate scored against role, pressure, and support |
-
-Hard gates should be rare. Use them only for impossible, illegal, or physically unsafe options: offside passes, out-of-bounds targets, unreachable balls, or shots blocked before leaving the foot.
-
-Everything else should become a score.
-
----
-
-## World Facts
-
-EQS queries should not recalculate raw soccer context ad hoc. Build one shared world analysis layer per tick.
-
-### Possession and Race Facts
-
-- `selfInterceptSteps`: cycles until this player can reach the ball.
-- `teamInterceptSteps`: best teammate intercept estimate.
-- `opponentInterceptSteps`: best opponent intercept estimate.
-- `ballOwner`: estimated current controller: self, teammate, opponent, none.
-- `possessionConfidence`: confidence that the owner can keep or win the ball.
-- `raceDelta`: opponent intercept steps minus teammate intercept steps.
-
-### Pressure Facts
-
-- `nearestOpponentDistance(position)`.
-- `nearestOpponentReachSteps(position)`.
-- `pressureAt(position)`: normalized pressure from nearby opponents.
-- `tackleRiskAt(position)`: local danger if a player receives or carries there.
-- `turnCost(player, targetAngle)`: cycles or penalty needed before useful movement.
-
-### Space Facts
-
-- `openSpaceAt(position)`: distance-weighted freedom from opponents.
-- `voronoiControlAt(position)`: rough team control of the point.
-- `passingLaneSafety(from, to)`.
-- `shootingLaneQuality(from, target)`.
-- `supportAngleToBallCarrier(position)`.
-- `forwardProgress(from, to)`.
-
-### Team Shape Facts
-
-- `roleHomePosition(player, phase)`: baseline role anchor.
-- `roleCorridor(player)`: allowed vertical/lateral band for the role.
-- `teamCompactness`.
-- `defensiveLineX`.
-- `offsideLineX`.
-- `dangerZoneCoverage`: coverage near own goal and central channels.
-
-### Goal Threat Facts
-
-- `canShootFrom(position)`.
-- `goalAngleWidth(position)`.
-- `goalieReachRisk(target)`.
-- `opponentBlockRisk(from, target)`.
-- `ownGoalDanger`: danger level of current ball state against us.
-
----
-
-## Distillation Buckets
-
-These buckets are a classification layer for extracted Cyrus behaviours. They are not new behaviours by themselves.
-
-Use them to sort the old system's logic before translating it into EQS.
-
-| Bucket | What it means in the old system | Evidence level |
-| --- | --- | --- |
-| World facts | Shared measurements used by decisions: intercept steps, pressure, open space, offside line, goal angle | Strong |
-| Decision actions | Phase/context decisions such as offense, defense, normal, contest, or special game mode | Strong |
-| Executive actions | Ball-use actions: shoot, pass, dribble, hold, clear, tackle/intercept execution | Strong |
-| Prep actions | Actions that prepare an executive action, currently clearest in receiving/unmarking for passes | Strong for pass receiving, weak elsewhere |
-| Positioning actions | Role/home/shape movement and spatial occupation when not directly executing on the ball | Strong |
-| Defensive actions | Pressing, blocking, marking, covering, tackling, intercepting, keeper defense | Strong |
-
-Candidate generation should be broad and cheap. Scoring should decide.
-
-### Executive Actions
-
-| Candidate     | Source principle                                                   | Generator                                            |
-| ------------- | ------------------------------------------------------------------ | ---------------------------------------------------- |
-| `Shoot`       | Cyrus shoot generator samples goal targets and scores reachability | Sample target points across goal mouth when in range |
-| `DirectPass`  | Pass to receiver's current/inertia position                        | For each legal receiver, estimate receive point      |
-| `LeadPass`    | Pass into space around receiver                                    | Sample angles and distances around receiver          |
-| `ThroughPass` | Pass behind defense into exploitable space                         | Sample forward spaces beyond defensive line          |
-| `Dribble`     | Short dribble generator samples 16 directions                      | Sample directions, simulate short carry path         |
-| `HoldBall`    | Retain possession under pressure                                   | Candidate when no progressive option is safe         |
-| `ClearBall`   | Emergency territorial relief                                       | Candidate when own goal danger is high               |
-
-### Prep Actions
-
-Prep actions are actions that prepare an executive action. They can be off-ball or on-ball; the bucket is defined by purpose, not by who currently has the ball.
-
-The old system's clearest prep action is pass-receiving preparation. Do not generalize this bucket to every executive action without source evidence.
-
-| Classification label | Source principle | Generator |
-| --- | --- | --- |
-| `SupportRun` | Receiver movement that creates a usable pass angle | Sample around role corridor and ball carrier |
-| `UnmarkRun` | Cyrus unmark samples positions and scores pass quality plus separation | Sample 2-7 units around current position and role lane |
-| `AttackSpace` | Lead/through receiving point created ahead of the current receiver | Sample behind midfield/defensive line when safe |
-
-### Positioning Actions
-
-| Candidate      | Source principle                          | Generator                       |
-| -------------- | ----------------------------------------- | ------------------------------- |
-| `StretchWidth` | Preserve wide outlet and defensive spread | Sample wide corridor anchors    |
-| `RecoverShape` | Return toward role home position          | Candidate always available      |
-| `CoverZone`    | Formation and defensive positioning       | Target uncovered important zone |
-
-### Defensive Actions
-
-| Candidate         | Source principle                                           | Generator                                        |
-| ----------------- | ---------------------------------------------------------- | ------------------------------------------------ |
-| `Intercept`       | Basic move prioritizes interception when race is favorable | Target predicted ball point                      |
-| `PressBall`       | Role-aware pressing margins in basic move                  | Target opponent carrier with pressure angle      |
-| `BlockLane`       | Basic block predicts opponent dribble path                 | Target lane between carrier and dangerous space  |
-| `MarkReceiver`    | Deny likely pass option                                    | Target receiver-side marking position            |
-| `OffsideTrapStep` | Cyrus can trigger trap in specific defensive contexts      | Step line forward only when coordinated and safe |
-
-### Goalkeeper Actions
-
-| Candidate             | Source principle                                       | Generator                               |
-| --------------------- | ------------------------------------------------------ | --------------------------------------- |
-| `KeeperSetLine`       | Position on line between ball and goal reference point | Clamp on keeper defend line             |
-| `KeeperChase`         | Chase when ball enters reachable penalty trajectory    | Target ball intercept point             |
-| `KeeperBlockShot`     | React to confirmed shot path                           | Target projected goal-line intersection |
-| `KeeperRecoverCenter` | Correct X/Y/body angle when no emergency               | Target optimal set position             |
-
-### Decision Actions
-
-Decision actions do not directly move a player. They choose the context that changes how candidates are scored.
-
-| Decision | Source principle | Effect |
-| --- | --- | --- |
-| `Attack` | Our team reaches or controls the ball first | Raises progress, support, and shot-access weights |
-| `Defense` | Opponent reaches or controls the ball first | Raises pressure, cover, and goal-protection weights |
-| `TransitionToAttack` | We have just won the ball | Raises secure possession and fast forward outlet weights |
-| `TransitionToDefense` | We have just lost the ball | Raises counter-press, lane blocking, and recovery weights |
-| `Contest` | Ball is loose or race is close | Raises intercept, second-ball, and compact support weights |
-
-## Query Library
-
-The same query functions should score many different candidates. This keeps the system explainable and prevents every behaviour from becoming its own rule tree.
-
-### Safety Queries
-
-- `receiverBeatsOpponent`: receiver reaches pass before nearest opponent.
-- `carrierSurvivesPressure`: dribble or hold path avoids tackle windows.
-- `laneAvoidsInterception`: ball path remains outside opponent reach.
-- `actionAvoidsOwnGoalDanger`: option does not create dangerous central turnover.
-- `legalAndInBounds`: target obeys field, offside, and role constraints.
-
-### Progress Queries
-
-- `advancesBall`: candidate moves ball toward opponent goal.
-- `improvesShotAccess`: resulting state increases shooting angle or range.
-- `breaksLine`: candidate bypasses a defensive line.
-- `entersValuableSpace`: candidate reaches open space in an advanced zone.
-
-### Control Queries
-
-- `keepsPossession`: team likely controls the next state.
-- `reducesOpponentControl`: defensive candidate lowers opponent options.
-- `improvesTeamShape`: movement keeps spacing, compactness, and role balance.
-- `supportsBallCarrier`: off-ball candidate creates useful nearby outlet.
-
-### Pressure Queries
-
-- `appliesImmediatePressure`: defender can constrain ball carrier quickly.
-- `blocksDangerousLane`: candidate sits between opponent and high-value target.
-- `coversCentralDanger`: position protects central route to goal.
-- `forcesBackwardOption`: pressure shape reduces forward opponent choices.
-
-### Execution Queries
-
-- `lowTurnCost`: action is aligned with current body direction.
-- `lowStaminaCost`: action does not overspend stamina for marginal value.
-- `fastArrival`: player can reach target quickly.
-- `stableChoice`: avoids oscillating away from a recently selected good target.
-
----
-
-## Phase Weighting
-
-Behaviour trees should choose the phase. EQS should choose the action within that phase.
-
-### Attack Phase
-
-Increase weights for:
-
-- `improvesShotAccess`
-- `breaksLine`
-- `supportsBallCarrier`
-- `receiverBeatsOpponent`
-- `entersValuableSpace`
-
-Decrease weights for:
-
-- speculative pressing
-- deep defensive compactness
-- low-value sideways recovery
-
-### Defense Phase
-
-Increase weights for:
-
-- `coversCentralDanger`
-- `blocksDangerousLane`
-- `appliesImmediatePressure`
-- `reducesOpponentControl`
-- `actionAvoidsOwnGoalDanger`
-
-Decrease weights for:
-
-- risky forward support
-- wide attacking width
-- long possession chains
-
-### Transition to Attack
-
-Increase weights for:
-
-- `keepsPossession`
-- `fastArrival`
-- `receiverBeatsOpponent`
-- `advancesBall`
-- `supportsBallCarrier`
-
-The first pass after a regain should prefer secure forward progress over maximum ambition.
-
-### Transition to Defense
-
-Increase weights for:
-
-- `appliesImmediatePressure`
-- `blocksDangerousLane`
-- `fastArrival`
-- `coversCentralDanger`
-
-The first defensive action after losing the ball should buy time for shape recovery.
-
----
-
-## Distilled Behaviour Modules
-
-### 1. Situation Detection
-
-Cyrus detects Normal, Offense, and Defense mainly from intercept comparisons. SoccerSim should preserve that principle:
+The discipline:
 
 ```text
-if our team reaches ball clearly first -> Attack
-if opponent reaches ball clearly first -> Defense
-otherwise -> Transition/Contest
+old mechanism -> mechanism shape -> genetic vial(s) -> later translation
 ```
 
-This is phase selection, not action selection. Avoid letting phase logic directly choose pass, press, or movement.
-
-### 2. Role Positioning
-
-Cyrus relies heavily on formation lookup tables. SoccerSim should treat role positions as anchors, not destinations.
-
-Position candidates should score:
-
-- closeness to role corridor
-- open space
-- pass support angle
-- coverage of dangerous zones
-- distance from nearest opponent
-- compactness with nearby teammates
-- forward/backward phase bias
-
-The principle is: role gives responsibility, EQS chooses the exact point.
-
-### 3. Passing
-
-Cyrus pass logic is strongest as a generator, not as a final decider.
-
-Keep:
-
-- direct, lead, and through pass categories
-- receiver reach vs opponent reach
-- offside filtering
-- out-of-bounds filtering
-- dangerous backpass penalty
-- preference for passes that move toward goal
-
-Translate to EQS:
-
-- Generate many legal pass candidates.
-- Score safety first, then progress, then tactical value.
-- Let a safe simple pass beat a flashy through ball when possession risk is high.
-
-### 4. Shooting
-
-Cyrus shooting is already close to EQS: sample targets, score goalie reach, opponent reach, one-kick feasibility, and target geometry.
-
-Keep:
-
-- sampled goal-mouth targets
-- shot availability threshold
-- goalie reach risk
-- opponent block risk
-- one-touch bonus
-
-Translate to EQS:
-
-- A shot should win when its expected goal threat beats the best pass or dribble continuation.
-- Bad shots should remain candidates but score below continuation.
-
-### 5. Dribbling
-
-Cyrus samples directions, filters unsafe zones, simulates movement, and checks opponent reach.
-
-Keep:
-
-- sampled dribble directions
-- stricter forward angle in own half
-- path safety simulation
-- opponent uncertainty buffer
-
-Translate to EQS:
-
-- Dribble is not "carry forward"; it is "move the ball into a better controlled state."
-- In own half, safety dominates.
-- In opponent half, line-breaking and shot access gain weight.
-
-### 6. Unmarking and Support
-
-Cyrus unmarking combines pass prediction, opponent distance, turn cost, forward bias, and short-term target caching.
-
-Keep:
-
-- local sample positions
-- separation from opponents
-- pass receive quality
-- forward direction bonus
-- oscillation control
-- stamina and role gating
-
-Translate to EQS:
-
-- Off-ball attackers should move where they can receive before defenders can close.
-- Support positions should be stable for a few ticks unless the world changes sharply.
-
-### 7. Blocking and Pressing
-
-Cyrus block behaviour predicts opponent dribble paths and assigns the first teammate able to stop the route.
-
-Keep:
-
-- predicted opponent carry path
-- central danger preference
-- nearest capable defender selection
-- role-aware pressing margin
-
-Translate to EQS:
-
-- Pressing scores high when arrival is fast and cover exists behind.
-- Blocking scores high when the opponent has a dangerous forward route.
-- A defender should not abandon central cover for low-impact pressure.
-
-### 8. Goalkeeper
-
-Cyrus goalkeeper logic is appropriately special. Keep it more constrained than outfield logic.
-
-Keep:
-
-- line between ball and goal as set-position principle
-- penalty-area chase trigger
-- shot-path interception
-- emergency priority over shape correction
-
-Translate to EQS:
-
-- Keeper candidates may use harder gates than outfield players.
-- The keeper's main scoring split is emergency save value vs positional readiness.
+Do not invent behaviours to fill a vial. A vial only stores mechanisms already observed in the old files.
 
 ---
 
-## Initial Implementation Order
+## Mechanism Shapes
 
-Build the sim in this order:
-
-1. World facts: intercept steps, pressure, lanes, goal angle, offside line.
-2. Candidate schema: common shape for action type, actor, target, score details.
-3. Generic EQS scorer: weighted query list with debug breakdown.
-4. On-ball actions: shoot, direct pass, lead pass, dribble, hold.
-5. Defensive actions: intercept, press, block lane, cover zone.
-6. Role positioning: replace static home movement with scored support/cover points.
-7. Goalkeeper: set line, chase, block shot.
-8. Behaviour tree phases: attack, defense, transition.
-
-Each step should render debug output before adding the next. The most important UI is not the match view; it is the score breakdown explaining why an agent chose an action.
+| Shape | Meaning |
+| --- | --- |
+| World fact | Measured or predicted state used by later logic |
+| Priority chain | Ordered behaviour attempts where an earlier success consumes the decision |
+| Candidate generator | Creates possible actions, targets, or positions |
+| Filter / gate | Rejects illegal, impossible, or unsafe options |
+| Evaluator | Scores, ranks, or compares options |
+| Spatial reference | Provides a location, line, region, or formation anchor |
+| Execution behaviour | Performs the selected body/neck/action command |
+| Stabilizer | Prevents jitter, overuse, or unstable switching |
 
 ---
 
-## Debug Requirements
+## Genetic Vials
 
-Every chosen action should expose:
+| Vial | Meaning |
+| --- | --- |
+| World facts | What the old system knows or predicts |
+| Progressive actions | Advance our state or obstruct opponent progress |
+| Combative actions | Directly attack or defend goal danger |
+| Combative preparation actions | Move into place to attack or defend goal danger |
+| Possessive actions | Win, keep, or protect ball ownership |
+| Circulation actions | Move the ball between teammates |
+| Circulation preparation actions | Prepare or deny ball circulation |
 
-- candidate type
-- final score
-- top positive query contributions
-- top negative query contributions
-- rejected hard gates, if any
-- phase weights active at decision time
-- nearest competing candidate and why it lost
-
-If the sim cannot explain a choice in one panel, the EQS layer is too opaque.
-
----
-
-## Non-Goals for First Build
-
-- No neural network pass prediction.
-- No full RoboCup server physics.
-- No set pieces beyond basic reset states.
-- No Cyrus formation table port.
-- No long-tail edge-case clone.
-- No hardcoded priority tree for normal open play.
-
-The first build should be small enough to reason about, but structured enough that better soccer can be added without rewriting the decision model.
+Mechanisms can belong to more than one vial.
 
 ---
 
-## Design Principle
+## Centrifuge Ledger
 
-The durable lesson is:
+### 1. `strategy.cpp`
 
-> Choose the action that improves the next controllable state, not merely the action that looks best right now.
+| Mechanism | Shape | Vial(s) |
+| --- | --- | --- |
+| Formation config loading for normal, offense, defense, set plays, goalie states | Spatial reference | World facts, combative preparation |
+| Role factory and role number assignment | Spatial reference | World facts |
+| Goalie uniform-number detection/validation | World fact | World facts, combative actions |
+| Situation detection from self/teammate/opponent intercept steps | World fact, evaluator | World facts, possessive actions |
+| Normal/offense/defense situation selection | Priority chain / phase mechanism | Progressive actions, possessive actions |
+| Current formation selection by situation/game mode | Spatial reference | Combative preparation, circulation preparation |
+| Ball-step projection before selecting home positions | World fact | World facts, progressive actions |
+| Formation home-position lookup/interpolation | Spatial reference | Combative preparation, circulation preparation |
+| Role-side and position-type assignment | Spatial reference | World facts |
+| Dynamic dash power by role, field zone, and stamina | Evaluator, stabilizer | Possessive actions, combative preparation |
+| Field-zone compression/expansion from formation data | Spatial reference | Progressive actions, combative preparation |
 
-That means every candidate should be judged by the state it creates:
+### 2. `bhv_basic_move.cpp`
 
-- Who reaches the ball next?
-- Can our player use the ball after receiving?
-- Does the option reduce or increase pressure?
-- Does it open goal access?
-- Does it preserve team shape?
-- Does it expose our goal if it fails?
+| Mechanism | Shape | Vial(s) |
+| --- | --- | --- |
+| Outfield priority chain: tackle -> intercept -> block -> offside trap -> unmark -> home position | Priority chain | Possessive, progressive, circulation preparation, combative preparation |
+| Basic tackle attempt before other movement | Execution behaviour, gate | Possessive actions |
+| Intercept decision using intercept-table race | Gate, execution behaviour | Possessive actions, progressive actions |
+| Role-aware pressing/intercept margins | Parameterized evaluator | Possessive actions, progressive actions |
+| Defensive block delegation | Priority-chain branch | Progressive actions, combative preparation |
+| Offside-trap trigger | Priority-chain branch, spatial reference | Progressive actions, combative preparation |
+| Unmark branch | Priority-chain branch | Circulation preparation, combative preparation |
+| Go-to-home fallback | Spatial reference, execution behaviour | Combative preparation, circulation preparation |
+| Dynamic dash power | Evaluator, stabilizer | Possessive actions, combative preparation |
+| Neck/scan behaviour while moving | Execution behaviour | World facts, circulation preparation |
 
-Cyrus often encodes these answers as branches. SoccerSim should encode them as queries.
+### 3. `bhv_basic_block.cpp`
+
+| Mechanism | Shape | Vial(s) |
+| --- | --- | --- |
+| Predict opponent dribble path 40 cycles ahead | World fact, candidate generator | World facts, progressive actions |
+| Simulate candidate opponent dribble directions | Candidate generator | Progressive actions |
+| Score opponent dribble directions by forward danger and own-goal proximity | Evaluator | Progressive actions, combative preparation |
+| Select first teammate able to intercept/block predicted route | Evaluator, gate | Possessive actions, progressive actions |
+| Move to blocking point | Execution behaviour | Progressive actions, combative preparation |
+| Turn/face ball while blocking | Execution behaviour | World facts, possessive actions |
+| Tackle check inside block behaviour | Gate, execution behaviour | Possessive actions |
+
+### 4. `bhv_unmark.cpp`
+
+| Mechanism | Shape | Vial(s) |
+| --- | --- | --- |
+| DNN-assisted pass-chain prediction | World fact, evaluator | World facts, circulation preparation |
+| Local candidate-position sampling around player | Candidate generator | Circulation preparation |
+| Distance ring sampling from roughly 2 to 7 units | Candidate generator | Circulation preparation |
+| Angle sampling around player | Candidate generator | Circulation preparation |
+| Pass-quality evaluation for sampled point | Evaluator | Circulation preparation, circulation actions |
+| Nearest-opponent distance reward | Evaluator | Circulation preparation, possessive actions |
+| Turn-cost penalty | Evaluator | Circulation preparation, possessive actions |
+| Forward-direction bonus | Evaluator | Progressive actions, combative preparation |
+| Stamina gate by role/field zone | Gate, stabilizer | Possessive actions, circulation preparation |
+| Role/zone gating of unmark behaviour | Gate | Circulation preparation, combative preparation |
+| Position cache for about 5 cycles | Stabilizer | Circulation preparation |
+| Intention receive setup | Stabilizer, execution support | Circulation actions, circulation preparation |
+
+### 5. `strict_check_pass_generator.cpp`
+
+| Mechanism | Shape | Vial(s) |
+| --- | --- | --- |
+| Passer state update | World fact | World facts, circulation actions |
+| Receiver state update | World fact | World facts, circulation actions |
+| Opponent state update | World fact | World facts, circulation actions |
+| Direct pass candidate to receiver inertia position | Candidate generator | Circulation actions |
+| Leading pass candidate around receiver | Candidate generator | Circulation actions, progressive actions |
+| Leading-pass angle/distance grid | Candidate generator | Circulation actions, circulation preparation |
+| Through pass into space behind defense | Candidate generator | Circulation actions, progressive actions, combative preparation |
+| Offside filter | Filter / gate | Circulation actions |
+| Out-of-bounds filter | Filter / gate | Circulation actions |
+| Dangerous backpass-area filter | Filter / gate | Possessive actions, combative actions |
+| Tackling-receiver filter | Filter / gate | Possessive actions, circulation actions |
+| Receiver-too-far filter | Filter / gate | Circulation actions |
+| Receiver arrival prediction | World fact, evaluator | Circulation actions, possessive actions |
+| Opponent reach prediction | World fact, evaluator | Circulation actions, possessive actions |
+| Ball trajectory simulation | World fact | Circulation actions |
+| Pass safety check | Evaluator, gate | Circulation actions, possessive actions |
+| Duplicate/same-point candidate control | Stabilizer | Circulation actions |
+| Candidate sorting by proximity to opponent goal | Evaluator | Progressive actions, combative preparation |
+| Success/failure debug classification | Evaluator support | World facts |
+
+### 6. `shoot_generator.cpp`
+
+| Mechanism | Shape | Vial(s) |
+| --- | --- | --- |
+| Shooting activation by range near opponent goal | Gate | Combative actions |
+| Goal-mouth target sampling | Candidate generator | Combative actions |
+| 25 target-point search across goal width | Candidate generator | Combative actions |
+| Kick speed / one-step feasibility search | Candidate generator, gate | Combative actions, possessive actions |
+| One-kick bonus | Evaluator | Combative actions |
+| Goalie-unreachable bonus | Evaluator | Combative actions |
+| Opponent-unreachable bonus | Evaluator | Combative actions |
+| Gaussian goalie angle-rate scoring | Evaluator | Combative actions |
+| Gaussian y-rate / centrality scoring | Evaluator | Combative actions |
+| Blocked-course rejection | Filter / gate | Combative actions |
+| Shot-course success/failure classification | Evaluator support | Combative actions |
+
+### 7. `short_dribble_generator.cpp`
+
+| Mechanism | Shape | Vial(s) |
+| --- | --- | --- |
+| 16-direction dribble sampling | Candidate generator | Possessive actions, progressive actions |
+| Field-zone direction filtering | Filter / gate | Possessive actions, progressive actions |
+| Own-half forward-angle restriction | Filter / gate | Possessive actions |
+| Deep-own-half stricter forward-angle restriction | Filter / gate | Possessive actions, combative actions |
+| Player path simulation per dribble direction | World fact, evaluator | Possessive actions |
+| Opponent reach/safety check | Evaluator, gate | Possessive actions |
+| Uncertainty buffer for opponent safety | Parameterized evaluator | Possessive actions |
+| Tackling-state bonus/penalty in safety | Parameterized evaluator | Possessive actions |
+| Candidate sorting by goal proximity | Evaluator | Progressive actions, combative preparation |
+
+### 8. `cross_generator.cpp`
+
+| Mechanism | Shape | Vial(s) |
+| --- | --- | --- |
+| Cross activation only near opponent goal | Gate | Combative actions, circulation actions |
+| Receiver-point sampling for cross | Candidate generator | Circulation actions, combative preparation |
+| Multi-distance and multi-angle receive sampling | Candidate generator | Circulation actions, circulation preparation |
+| Ball trajectory safety check per cycle | Evaluator, gate | Circulation actions, possessive actions |
+| Opponent reach check along cross path | Evaluator, gate | Circulation actions, possessive actions |
+| Best angle-width selection | Evaluator | Circulation actions, combative actions |
+| Maximum angular separation from nearest defender | Evaluator | Combative actions, circulation actions |
+
+### 9. `bhv_goalie_basic_move.cpp`
+
+| Mechanism | Shape | Vial(s) |
+| --- | --- | --- |
+| Keeper position on line between ball and point behind goal | Spatial reference | Combative preparation |
+| Clamp keeper position to goal/defend line | Spatial reference, gate | Combative preparation |
+| Keeper priority chain: tackle -> deep cross prep -> stop -> emergency dash -> X correction -> body-angle correction -> Y adjustment | Priority chain | Combative actions, combative preparation, possessive actions |
+| Keeper tackle attempt | Execution behaviour, gate | Possessive actions, combative actions |
+| Deep-cross preparation | Priority-chain branch | Combative preparation, circulation preparation |
+| Stop-dash behaviour | Execution behaviour, stabilizer | Combative preparation |
+| Emergency dash | Execution behaviour | Combative actions |
+| Correct X position | Execution behaviour, spatial reference | Combative preparation |
+| Correct body angle | Execution behaviour | Combative preparation |
+| Correct Y position | Execution behaviour, spatial reference | Combative preparation |
+
+### 10. `bhv_goalie_chase_ball.cpp`
+
+| Mechanism | Shape | Vial(s) |
+| --- | --- | --- |
+| Penalty-area trajectory intersection check | Gate, world fact | Combative actions |
+| Keeper arrival-before-opponent check | Gate, evaluator | Possessive actions, combative actions |
+| Confirmed shot-moving-toward-goal check | Gate, world fact | Combative actions |
+| Active interception catch-point calculation | World fact | Possessive actions, combative actions |
+| Reject chase if intercept point outside penalty area | Gate | Combative actions |
+| Reject chase if opponent arrives faster | Gate | Possessive actions |
+| Ball-line intersection with vertical defend line | Spatial reference | Combative preparation |
+| Slide-step positioning from ball-line intersection | Execution behaviour, spatial reference | Combative preparation |
+| Chase/intercept execution | Execution behaviour | Possessive actions, combative actions |
+
+### 11. `sample_field_evaluator.cpp`
+
+| Mechanism | Shape | Vial(s) |
+| --- | --- | --- |
+| Whole-state scoring | Evaluator | World facts, progressive actions |
+| Ball x-position score | Evaluator | Progressive actions |
+| Opponent-pressure weighted ball value | Evaluator | Possessive actions, progressive actions |
+| Voronoi best-open-space point | Evaluator, spatial reference | Progressive actions, circulation preparation |
+| Offside-line gap detection | Evaluator, spatial reference | Circulation actions, progressive actions |
+| Free situation near offside line bonus | Evaluator | Progressive actions, combative preparation |
+| Shoot opportunity bonus | Evaluator | Combative actions |
+| Teammate/opponent sector checks | World fact, evaluator | World facts, circulation preparation |
+
+### 12. `field_analyzer.cpp`
+
+| Mechanism | Shape | Vial(s) |
+| --- | --- | --- |
+| Predict player turn cycle | World fact, evaluator | World facts, possessive actions |
+| Predict self reach cycle with stamina model | World fact, evaluator | Possessive actions |
+| Predict generic player reach cycle | World fact, evaluator | Possessive actions, circulation actions |
+| Estimate minimum reach cycle for ball trajectory | World fact, evaluator | Possessive actions, circulation actions |
+| Ball-field-line cross point calculation | Spatial reference | World facts, circulation actions |
+| Can-shoot-from check | Evaluator, gate | Combative actions |
+| Goal angle sampling across goal width | Candidate generator, evaluator | Combative actions |
+| Opponent hide-angle / blocking-angle model | World fact, evaluator | Combative actions |
+| Max shooting-angle gap threshold | Gate, evaluator | Combative actions |
+| Opponent-can-shoot-from check | Evaluator, gate | Combative actions, combative preparation |
+| Teammate blocking-angle model against opponent shot | Evaluator | Combative preparation |
+| Pass-count estimation | Evaluator | Circulation actions |
+| Ball moving toward goal check | World fact, gate | Combative actions |
+| Near-goal next-action search condition | Gate | Combative actions, progressive actions |
+| Over-offside-line final-action condition | Gate | Progressive actions, circulation actions |
+| Blocker selection by attack angle | Evaluator, spatial reference | Progressive actions, combative preparation |
+| Voronoi diagram update for pass/open-space reasoning | World fact, spatial reference | World facts, circulation preparation |
+
+---
+
+## Non-Critical Files
+
+| File/group | Classification |
+| --- | --- |
+| `role_*.cpp` | Role boilerplate; role intelligence is mostly formation/planner-driven |
+| `pass.cpp`, `shoot.cpp`, `dribble.cpp`, `positioning.cpp` | Data containers for action parameters |
+| `DEState.cpp` | Empty/include-only |
+| `offensive_data_extractor.cpp` | Training-data extraction, not behaviour principle |
+| `formations-dt/*.conf` | Spatial reference data; useful as formation evidence, not a decision mechanism |
+| `setplay/` | Out of initial open-play scope |
+
+---
+
+## Vial Cross-Cuts
+
+| Mechanism family | Primary shape | Common vials |
+| --- | --- | --- |
+| Intercept race | World fact + evaluator | Possessive, circulation, combative |
+| Candidate sampling | Candidate generator | Depends on target: pass, shot, dribble, unmark |
+| Safety rejection | Filter / gate | Possessive, circulation |
+| Goal-threat scoring | Evaluator | Combative, progressive |
+| Formation/home positioning | Spatial reference | Combative preparation, circulation preparation |
+| Path/trajectory prediction | World fact | Possessive, circulation, combative |
+| Stabilization gates | Stabilizer | Usually attached to circulation preparation or possession |
+
+---
+
+## Open Classification Questions
+
+- Is `dribble` primarily possessive protection, progressive advancement, or both depending on field zone?
+- Is `clear` best classified as combative defense, possession release, or emergency circulation?
+- Which formation/home-position mechanisms are goal-defense preparation versus generic team-shape reference?
+- Which unmark candidates are only circulation preparation, and which become combative preparation because they create goal access?
+- Does the old system show real preparation counterparts for shooting or dribbling, or only for passing/receiving and defensive blocking?
+
+---
+
+## Distillation Discipline
+
+For every future extracted mechanism:
+
+1. Name the observed Cyrus mechanism.
+2. Identify its mechanism shape.
+3. Place it into one or more genetic vials.
+4. Record the source file.
+5. Only then decide whether SoccerSim should translate it into a query, candidate, gate, weight, or execution behaviour.
+
+This keeps the process genetic distillation, not genetic modification.
