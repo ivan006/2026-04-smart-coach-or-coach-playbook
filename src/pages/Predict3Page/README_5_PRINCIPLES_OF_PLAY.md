@@ -12,11 +12,11 @@ The goal is not to port Cyrus. The goal is to preserve the reasons behind its ch
 
 Every Cyrus branch should be translated into one of three things:
 
-| Cyrus pattern | SoccerSim equivalent |
-| --- | --- |
-| "If this situation, do this action" | Candidate action with a high contextual score |
-| Magic threshold or margin | Named query with tunable weight |
-| Formation lookup result | Spatial candidate scored against role, pressure, and support |
+| Cyrus pattern                       | SoccerSim equivalent                                         |
+| ----------------------------------- | ------------------------------------------------------------ |
+| "If this situation, do this action" | Candidate action with a high contextual score                |
+| Magic threshold or margin           | Named query with tunable weight                              |
+| Formation lookup result             | Spatial candidate scored against role, pressure, and support |
 
 Hard gates should be rare. Use them only for impossible, illegal, or physically unsafe options: offside passes, out-of-bounds targets, unreachable balls, or shots blocked before leaving the foot.
 
@@ -79,45 +79,45 @@ Candidate generation should be broad and cheap. Scoring should decide.
 
 ### On-Ball Candidates
 
-| Candidate | Source principle | Generator |
-| --- | --- | --- |
-| `Shoot` | Cyrus shoot generator samples goal targets and scores reachability | Sample target points across goal mouth when in range |
-| `DirectPass` | Pass to receiver's current/inertia position | For each legal receiver, estimate receive point |
-| `LeadPass` | Pass into space around receiver | Sample angles and distances around receiver |
-| `ThroughPass` | Pass behind defense into exploitable space | Sample forward spaces beyond defensive line |
-| `Dribble` | Short dribble generator samples 16 directions | Sample directions, simulate short carry path |
-| `HoldBall` | Retain possession under pressure | Candidate when no progressive option is safe |
-| `ClearBall` | Emergency territorial relief | Candidate when own goal danger is high |
+| Candidate     | Source principle                                                   | Generator                                            |
+| ------------- | ------------------------------------------------------------------ | ---------------------------------------------------- |
+| `Shoot`       | Cyrus shoot generator samples goal targets and scores reachability | Sample target points across goal mouth when in range |
+| `DirectPass`  | Pass to receiver's current/inertia position                        | For each legal receiver, estimate receive point      |
+| `LeadPass`    | Pass into space around receiver                                    | Sample angles and distances around receiver          |
+| `ThroughPass` | Pass behind defense into exploitable space                         | Sample forward spaces beyond defensive line          |
+| `Dribble`     | Short dribble generator samples 16 directions                      | Sample directions, simulate short carry path         |
+| `HoldBall`    | Retain possession under pressure                                   | Candidate when no progressive option is safe         |
+| `ClearBall`   | Emergency territorial relief                                       | Candidate when own goal danger is high               |
 
 ### Off-Ball Attacking Candidates
 
-| Candidate | Source principle | Generator |
-| --- | --- | --- |
-| `SupportRun` | Move to useful passing angle near carrier | Sample around role corridor and ball carrier |
-| `UnmarkRun` | Cyrus unmark samples positions and scores pass quality plus separation | Sample 2-7 units around current position and role lane |
-| `StretchWidth` | Preserve wide outlet and defensive spread | Sample wide corridor anchors |
-| `AttackSpace` | Run into future receiving point | Sample behind midfield/defensive line when safe |
-| `RecoverShape` | Return toward role home position | Candidate always available |
+| Candidate      | Source principle                                                       | Generator                                              |
+| -------------- | ---------------------------------------------------------------------- | ------------------------------------------------------ |
+| `SupportRun`   | Move to useful passing angle near carrier                              | Sample around role corridor and ball carrier           |
+| `UnmarkRun`    | Cyrus unmark samples positions and scores pass quality plus separation | Sample 2-7 units around current position and role lane |
+| `StretchWidth` | Preserve wide outlet and defensive spread                              | Sample wide corridor anchors                           |
+| `AttackSpace`  | Run into future receiving point                                        | Sample behind midfield/defensive line when safe        |
+| `RecoverShape` | Return toward role home position                                       | Candidate always available                             |
 
 ### Defensive Candidates
 
-| Candidate | Source principle | Generator |
-| --- | --- | --- |
-| `Intercept` | Basic move prioritizes interception when race is favorable | Target predicted ball point |
-| `PressBall` | Role-aware pressing margins in basic move | Target opponent carrier with pressure angle |
-| `BlockLane` | Basic block predicts opponent dribble path | Target lane between carrier and dangerous space |
-| `CoverZone` | Formation and defensive positioning | Target uncovered dangerous zone |
-| `MarkReceiver` | Deny likely pass option | Target receiver-side marking position |
-| `OffsideTrapStep` | Cyrus can trigger trap in specific defensive contexts | Step line forward only when coordinated and safe |
+| Candidate         | Source principle                                           | Generator                                        |
+| ----------------- | ---------------------------------------------------------- | ------------------------------------------------ |
+| `Intercept`       | Basic move prioritizes interception when race is favorable | Target predicted ball point                      |
+| `PressBall`       | Role-aware pressing margins in basic move                  | Target opponent carrier with pressure angle      |
+| `BlockLane`       | Basic block predicts opponent dribble path                 | Target lane between carrier and dangerous space  |
+| `CoverZone`       | Formation and defensive positioning                        | Target uncovered dangerous zone                  |
+| `MarkReceiver`    | Deny likely pass option                                    | Target receiver-side marking position            |
+| `OffsideTrapStep` | Cyrus can trigger trap in specific defensive contexts      | Step line forward only when coordinated and safe |
 
 ### Goalkeeper Candidates
 
-| Candidate | Source principle | Generator |
-| --- | --- | --- |
-| `KeeperSetLine` | Position on line between ball and goal reference point | Clamp on keeper defend line |
-| `KeeperChase` | Chase when ball enters reachable penalty trajectory | Target ball intercept point |
-| `KeeperBlockShot` | React to confirmed shot path | Target projected goal-line intersection |
-| `KeeperRecoverCenter` | Correct X/Y/body angle when no emergency | Target optimal set position |
+| Candidate             | Source principle                                       | Generator                               |
+| --------------------- | ------------------------------------------------------ | --------------------------------------- |
+| `KeeperSetLine`       | Position on line between ball and goal reference point | Clamp on keeper defend line             |
+| `KeeperChase`         | Chase when ball enters reachable penalty trajectory    | Target ball intercept point             |
+| `KeeperBlockShot`     | React to confirmed shot path                           | Target projected goal-line intersection |
+| `KeeperRecoverCenter` | Correct X/Y/body angle when no emergency               | Target optimal set position             |
 
 ---
 

@@ -36,3 +36,4 @@ SoccerSim starts naive — naive enough to be understood, principled enough to g
 - [RESEARCH_MAP.md](./RESEARCH_MAP.md) — Source file index and what each file contains
 - [CODE_NOTES.md](./CODE_NOTES.md) — Code-level decision logic notes per file
 - [README_5_PRINCIPLES_OF_PLAY.md](./README_5_PRINCIPLES_OF_PLAY.md) — EQS distillation blueprint
+- [README_6_FOOTBALL_FRAMEWORK.md](./README_6_FOOTBALL_FRAMEWORK.md) — child-readable football decision framework
