@@ -97,7 +97,7 @@ They should not add new football ideas by themselves. They only help us name wha
 | World facts | What is true right now | Ball position, pressure, open space, who arrives first |
 | Decision actions | Choosing the situation | Attack, defend, normal, contest |
 | Executive actions | Doing something with the ball | Shoot, pass, dribble, hold, clear |
-| Prep actions | Getting ready before the ball comes | Mostly unmarking and receiving for passes |
+| Prep actions | Getting ready for an executive action | Mostly unmarking and receiving for passes |
 | Positioning actions | Standing in the right place for the team | Keep shape, cover space, stretch width |
 | Defensive actions | Stopping the opponent | Press, block, mark, intercept, recover |
 

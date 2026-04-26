@@ -84,7 +84,7 @@ Use them to sort the old system's logic before translating it into EQS.
 | World facts | Shared measurements used by decisions: intercept steps, pressure, open space, offside line, goal angle | Strong |
 | Decision actions | Phase/context decisions such as offense, defense, normal, contest, or special game mode | Strong |
 | Executive actions | Ball-use actions: shoot, pass, dribble, hold, clear, tackle/intercept execution | Strong |
-| Prep actions | Off-ball actions that prepare a later ball action, mainly receiving/unmarking for passes | Strong for pass receiving, weak elsewhere |
+| Prep actions | Actions that prepare an executive action, currently clearest in receiving/unmarking for passes | Strong for pass receiving, weak elsewhere |
 | Positioning actions | Role/home/shape movement and spatial occupation when not directly executing on the ball | Strong |
 | Defensive actions | Pressing, blocking, marking, covering, tackling, intercepting, keeper defense | Strong |
 
@@ -103,6 +103,8 @@ Candidate generation should be broad and cheap. Scoring should decide.
 | `ClearBall`   | Emergency territorial relief                                       | Candidate when own goal danger is high               |
 
 ### Prep Actions
+
+Prep actions are actions that prepare an executive action. They can be off-ball or on-ball; the bucket is defined by purpose, not by who currently has the ball.
 
 The old system's clearest prep action is pass-receiving preparation. Do not generalize this bucket to every executive action without source evidence.
 
