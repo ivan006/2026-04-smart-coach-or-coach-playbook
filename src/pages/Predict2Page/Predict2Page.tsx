@@ -87,8 +87,8 @@ class Player extends YUKA.Vehicle {
   constructor(isOpponent = false) {
     super();
     this.isOpponent = isOpponent;
-    this.maxSpeed = 1.8;
-    this.maxForce = 10;
+    this.maxSpeed = 80;
+    this.maxForce = 400;
 
     this.seekBehavior = new YUKA.SeekBehavior(this.targetPos);
     this.steering.add(this.seekBehavior);
