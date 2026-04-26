@@ -137,53 +137,63 @@ These are the files that were read and contain the decision logic being translat
 
 ### 🧠 Evaluation & Search
 
-| File | Path | What it contains |
-|---|---|---|
-| `sample_field_evaluator.cpp` | `/src/player/sample_field_evaluator.cpp` | **The core scoring function.** Scores any game state by: ball x-position (weighted by opponent pressure), Voronoi-based best open space point, offside line gap detection, shoot opportunity bonus (+1e6). This is the closest thing to EQS already present. |
-| `action_chain_graph.cpp` | `/src/player/planner/action_chain_graph.cpp` | **Best-first search over action chains.** Generates candidates, simulates forward up to depth 4, scores resulting state, keeps best chain. Falls back to HoldBall. Max 500 evaluations per tick. |
+| File                         | Path                                         | What it contains                                                                                                                                                                                                                                             |
+| ---------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `sample_field_evaluator.cpp` | `/src/player/sample_field_evaluator.cpp`     | **The core scoring function.** Scores any game state by: ball x-position (weighted by opponent pressure), Voronoi-based best open space point, offside line gap detection, shoot opportunity bonus (+1e6). This is the closest thing to EQS already present. |
+| `action_chain_graph.cpp`     | `/src/player/planner/action_chain_graph.cpp` | **Best-first search over action chains.** Generates candidates, simulates forward up to depth 4, scores resulting state, keeps best chain. Falls back to HoldBall. Max 500 evaluations per tick.                                                             |
 
 ### 🏃 Positioning & Movement
 
-| File | Path | What it contains |
-|---|---|---|
-| `bhv_basic_move.cpp` | `/src/player/bhv_basic_move.cpp` | **Core outfield movement logic.** Priority chain: tackle → intercept (with role-aware pressing margins) → blocking → offside trap → unmarking → go to home position. Dynamic dash power. |
-| `strategy.cpp` | `/src/player/strategy.cpp` | **Situation detection and formation management.** Determines Normal / Offense / Defense situation from intercept step comparison. Loads appropriate formation. Computes home positions per player using Voronoi gap analysis near offside line. Dynamic dash power per role and field zone. |
-| `bhv_basic_block.cpp` | `/src/player/bhv_basic_block.cpp` | **Defensive blocking.** Simulates predicted opponent dribble path 40 cycles ahead. Finds first teammate who can intercept. Scores dribble directions using a mini utility function (`-target.x + proximity to own goal`). |
-| `bhv_unmark.cpp` | `/src/player/bhv_unmark.cpp` | **Attacking movement off the ball.** Uses a DNN (`unmark_dnn_weights.txt`) to predict pass chains. Samples candidate positions around home pos (dist 2-7, angle every 20°). Scores each by: pass quality + nearest opponent distance + turn cost + forward direction bonus. Caches position 5 cycles to avoid oscillation. Stamina-gated per role and field zone. |
+| File                  | Path                              | What it contains                                                                                                                                                                                                                                                                                                                                                  |
+| --------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bhv_basic_move.cpp`  | `/src/player/bhv_basic_move.cpp`  | **Core outfield movement logic.** Priority chain: tackle → intercept (with role-aware pressing margins) → blocking → offside trap → unmarking → go to home position. Dynamic dash power.                                                                                                                                                                          |
+| `strategy.cpp`        | `/src/player/strategy.cpp`        | **Situation detection and formation management.** Determines Normal / Offense / Defense situation from intercept step comparison. Loads appropriate formation. Computes home positions per player using Voronoi gap analysis near offside line. Dynamic dash power per role and field zone.                                                                       |
+| `bhv_basic_block.cpp` | `/src/player/bhv_basic_block.cpp` | **Defensive blocking.** Simulates predicted opponent dribble path 40 cycles ahead. Finds first teammate who can intercept. Scores dribble directions using a mini utility function (`-target.x + proximity to own goal`).                                                                                                                                         |
+| `bhv_unmark.cpp`      | `/src/player/bhv_unmark.cpp`      | **Attacking movement off the ball.** Uses a DNN (`unmark_dnn_weights.txt`) to predict pass chains. Samples candidate positions around home pos (dist 2-7, angle every 20°). Scores each by: pass quality + nearest opponent distance + turn cost + forward direction bonus. Caches position 5 cycles to avoid oscillation. Stamina-gated per role and field zone. |
 
 ### ⚽ Action Generators (Candidate Actions)
 
-| File | Path | What it contains |
-|---|---|---|
-| `strict_check_pass_generator.cpp` | `/src/player/planner/strict_check_pass_generator.cpp` | **Pass candidate generation.** Three pass types per receiver: Direct (to inertia position), Leading (to nearby space, 24 angles × 4 distances), Through (ball into space behind defence). Filters: offside, out of bounds, dangerous backpass area, tackling receiver, receiver too far (>40 units). Sorts candidates by proximity to opponent goal. |
-| `shoot_generator.cpp` | `/src/player/planner/shoot_generator.cpp` | **Shoot candidate generation and scoring.** Samples 25 targets across goal width within 30 units. Scores each: one-kick bonus (+50), goalie unreachable (+100), opponent unreachable (+100), Gaussian goalie angle rate, Gaussian y-rate (centre preferred from distance). Already a multi-factor utility scorer. |
+| File                              | Path                                                  | What it contains                                                                                                                                                                                                                                                                                                                                      |
+| --------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `strict_check_pass_generator.cpp` | `/src/player/planner/strict_check_pass_generator.cpp` | **Pass candidate generation.** Three pass types per receiver: Direct (to inertia position), Leading (to nearby space, 24 angles × 4 distances), Through (ball into space behind defence). Filters: offside, out of bounds, dangerous backpass area, tackling receiver, receiver too far (>40 units). Sorts candidates by proximity to opponent goal.  |
+| `shoot_generator.cpp`             | `/src/player/planner/shoot_generator.cpp`             | **Shoot candidate generation and scoring.** Samples 25 targets across goal width within 30 units. Scores each: one-kick bonus (+50), goalie unreachable (+100), opponent unreachable (+100), Gaussian goalie angle rate, Gaussian y-rate (centre preferred from distance). Already a multi-factor utility scorer.                                     |
+| `short_dribble_generator.cpp`     | `/src/player/planner/short_dribble_generator.cpp`     | **Dribble candidate generation.** Samples 16 directions evenly around 360°. Direction filtered by field zone: in own half only allows within 100° of forward; deep in own half only within 45°. Simulates player path per direction, checks opponent safety with bonus steps for uncertainty and tackling state. Candidates sorted by goal proximity. |
+| `cross_generator.cpp`             | `/src/player/planner/cross_generator.cpp`             | **Cross candidate generation.** Only active within 35 units of opponent goal. Samples receive points per receiver at multiple distances and angles. Opponent safety check simulates ball trajectory cycle by cycle. Selects best angle-width cross — maximum angular separation from nearest defender.                                                |
 
 ### 🥅 Goalkeeper
 
-| File | Path | What it contains |
-|---|---|---|
-| `bhv_goalie_basic_move.cpp` | `/src/player/bhv_goalie_basic_move.cpp` | **Goalkeeper positioning.** Positions on line between a point behind goal and ball, clamped to goal line. Priority: tackle → deep cross prep → stop → emergency dash → correct X → correct body angle → Y adjustment. |
+| File                        | Path                                    | What it contains                                                                                                                                                                                                                                       |
+| --------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `bhv_goalie_basic_move.cpp` | `/src/player/bhv_goalie_basic_move.cpp` | **Goalkeeper positioning.** Positions on line between a point behind goal and ball, clamped to goal line. Priority: tackle → deep cross prep → stop → emergency dash → correct X → correct body angle → Y adjustment.                                  |
 | `bhv_goalie_chase_ball.cpp` | `/src/player/bhv_goalie_chase_ball.cpp` | **Goalkeeper chase trigger.** Chases only when: ball trajectory intersects penalty area AND goalie can arrive before opponent, OR confirmed shot moving toward goal. Uses ball line intersection with vertical defend line for slide-step positioning. |
 
 ---
 
 ## Files Read but Not Critical
 
-| File | Reason |
-|---|---|
-| `role_*.cpp` (all) | Boilerplate — all identical. Role differentiation is handled entirely by formation position and the planner, not role files. |
-| `pass.cpp`, `shoot.cpp`, `dribble.cpp` | Data classes only — constructors that store action parameters. No decision logic. |
-| `bhv_goalie_free_kick.cpp` | Set piece specific, out of scope for core simulation. |
-| `setplay/` folder | Out of scope for initial build. |
+| File                                   | Reason                                                                                                                       |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `role_*.cpp` (all)                     | Boilerplate — all identical. Role differentiation is handled entirely by formation position and the planner, not role files. |
+| `pass.cpp`, `shoot.cpp`, `dribble.cpp` | Data classes only — constructors that store action parameters. No decision logic.                                            |
+| `bhv_goalie_free_kick.cpp`             | Set piece specific, out of scope for core simulation.                                                                        |
+| `setplay/` folder                      | Out of scope for initial build.                                                                                              |
 
 ---
 
-## Files Not Yet Read — Lower Priority
+## Files Read but Not Critical (Updated)
 
-| File | What it likely contains |
-|---|---|
-| `planner/short_dribble_generator.cpp` | Short dribble candidate generation and scoring |
-| `planner/positioning.cpp` | Agent positioning logic for off-ball movement |
-| `planner/cross_generator.cpp` | Cross candidate generation |
-| `data_extractor/offensive_data_extractor.cpp` | Feature extraction feeding the unmark DNN |
-| `formations-dt/*.conf` | Formation position data — ball position → home position mappings |
+| File                                                      | Reason                                                                                                                              |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `role_*.cpp` (all)                                        | Boilerplate — all identical. Role differentiation is handled entirely by formation position and the planner, not role files.        |
+| `pass.cpp`, `shoot.cpp`, `dribble.cpp`, `positioning.cpp` | Data classes only — constructors that store action parameters. No decision logic.                                                   |
+| `bhv_goalie_free_kick.cpp`                                | Set piece specific, out of scope for core simulation.                                                                               |
+| `setplay/` folder                                         | Out of scope for initial build.                                                                                                     |
+| `DEState.cpp`                                             | Empty file — just an include.                                                                                                       |
+| `offensive_data_extractor.cpp`                            | Training data feature extraction for DNN — not principles of play. Extracts positions/angles/distances into CSV for model training. |
+| `formations-dt/*.conf`                                    | Configuration data not principles — ball position → home position mappings. Approximated using standard football formations.        |
+
+---
+
+## Research Complete ✅
+
+All critical files have been read. The full decision vocabulary has been extracted and is ready for EQS translation.
