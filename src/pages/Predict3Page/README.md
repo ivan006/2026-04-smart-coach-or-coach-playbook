@@ -20,6 +20,8 @@ The two reference codebases sit in a lineage: **agent2d** ([2DSimulation/agent-2
 
 Where both hardcode decisions as C++ priority cascades (essentially: _if situation X then action Y, else try Z_), SoccerSim replaces that entire decision layer with a **scored candidate model**: every possible action is a candidate, every environmental factor is a query, and the winner is the highest aggregate score. The domain knowledge from RoboCup2D is preserved — it's just expressed as scoring weights rather than branching conditions.
 
+The richest open-source reference for what those rules actually look like in practice is **Cyrus2DBase** ([Cyrus2D/Cyrus2DBase](https://github.com/Cyrus2D/Cyrus2DBase)) — a merger of HELIOS Base, Gliders2D, and features from Cyrus2021 (RoboCup 2021 champions). Compared to the minimal helios-base `Bhv_BasicMove` (3 rules: tackle, intercept, go home), Cyrus's equivalent implements role-aware pressing thresholds, blocking, offside trap triggering, unmarking runs, and dynamic tackle probability based on field position. These behaviours are still expressed as if/else priority chains — but they define the _decision vocabulary_ that SoccerSim translates into EQS scoring queries.
+
 ---
 
 ## What EQS Actually Means
@@ -98,6 +100,9 @@ BehaviorTree.js and Yuka are complementary, not redundant. The BT manages strate
 
 - **RoboCup2D Tutorial** — [herodrigues.github.io/robocup2d-tutorial](https://herodrigues.github.io/robocup2d-tutorial)  
   Explanatory companion covering agent2D behaviours, roles, strategy, and librcsc geometry primitives.
+
+- **Cyrus2DBase** (C++, GPL-3.0) — [github.com/Cyrus2D/Cyrus2DBase](https://github.com/Cyrus2D/Cyrus2DBase)  
+  HeliosBase + GlidersBase + features from Cyrus2021 (RoboCup 2021 champions). The most decision-rich open-source reference available. Primary source for the _decision vocabulary_ being translated into EQS: role-aware pressing, blocking, offside trap, unmarking, dynamic tackle thresholds.
 
 - **BehaviorTree.js** — behaviour tree orchestration layer
 - **Yuka** — game-oriented AI library for steering and spatial reasoning
