@@ -9,164 +9,288 @@ import {
   FAILURE,
 } from "behaviortree";
 
-const W = 1200;
-const H = 700;
-const PITCH_LEFT = 40;
-const PITCH_RIGHT = W - 40;
-const PITCH_TOP = 20;
-const PITCH_BOTTOM = H - 20;
-const CX = W / 2;
-const CY = H / 2;
+const W = 1200,
+  H = 700;
+const PITCH_LEFT = 40,
+  PITCH_RIGHT = W - 40,
+  PITCH_TOP = 20,
+  PITCH_BOTTOM = H - 20;
+const CX = W / 2,
+  CY = H / 2;
+const PITCH_W = PITCH_RIGHT - PITCH_LEFT,
+  PITCH_H = PITCH_BOTTOM - PITCH_TOP;
+const KICK_POWER = 15,
+  SHOOT_RANGE = 150,
+  FRICTION = 0.97;
 
 // ── EQS ──────────────────────────────────────────────────────────────────────
 
 type Candidate = { x: number; y: number };
-type EQSContext = { ball: YUKA.Vector3; opponents: YUKA.Vector3[] };
+type EQSContext = { ball: Ball; opponents: Player[]; teammates: Player[] };
 type Test = (c: Candidate, ctx: EQSContext) => number;
 
 function query(
   generator: (ctx: EQSContext) => Candidate[],
   ctx: EQSContext,
   tests: Test[],
-): Candidate {
+): Candidate | null {
   const candidates = generator(ctx);
+  if (!candidates.length) return null;
   return candidates
     .map((c) => ({ c, score: tests.reduce((s, t) => s + t(c, ctx), 0) }))
     .sort((a, b) => b.score - a.score)[0].c;
 }
 
-// Grid generator — samples points ahead of the ball toward goal
-function forwardConeGenerator(ctx: EQSContext): Candidate[] {
+function forwardConeGenerator(ctx: EQSContext, isHome: boolean): Candidate[] {
   const candidates: Candidate[] = [];
-  const bx = ctx.ball.x;
-  const by = ctx.ball.z;
-  for (let dx = 80; dx <= 320; dx += 80) {
-    for (let dy = -160; dy <= 160; dy += 80) {
-      const x = bx + dx;
-      const y = by + dy;
-      if (x < PITCH_LEFT + 20 || x > PITCH_RIGHT - 20) continue;
-      if (y < PITCH_TOP + 20 || y > PITCH_BOTTOM - 20) continue;
+  const bx = ctx.ball.position.x,
+    by = ctx.ball.position.z;
+  const dir = isHome ? 1 : -1;
+  for (let dx = 80; dx <= 320; dx += 80)
+    for (let dy = -200; dy <= 200; dy += 80) {
+      const x = bx + dx * dir,
+        y = by + dy;
+      if (
+        x < PITCH_LEFT + 20 ||
+        x > PITCH_RIGHT - 20 ||
+        y < PITCH_TOP + 20 ||
+        y > PITCH_BOTTOM - 20
+      )
+        continue;
       candidates.push({ x, y });
     }
-  }
   return candidates;
 }
 
-// Tests
-const radialProgressTest: Test = (c) =>
-  (c.x - PITCH_LEFT) / (PITCH_RIGHT - PITCH_LEFT);
+const radialProgressTest: Test = (c) => (c.x - PITCH_LEFT) / PITCH_W;
+const opponentDistanceTest: Test = (c, ctx) =>
+  !ctx.opponents.length
+    ? 1
+    : Math.min(
+        Math.min(
+          ...ctx.opponents.map((o) =>
+            Math.sqrt((c.x - o.position.x) ** 2 + (c.y - o.position.z) ** 2),
+          ),
+        ) / 200,
+        1,
+      );
+const teammateSpacingTest: Test = (c, ctx) =>
+  !ctx.teammates.length
+    ? 1
+    : Math.min(
+        Math.min(
+          ...ctx.teammates.map((t) =>
+            Math.sqrt((c.x - t.position.x) ** 2 + (c.y - t.position.z) ** 2),
+          ),
+        ) / 150,
+        1,
+      );
 
-const opponentDistanceTest: Test = (c, ctx) => {
-  if (ctx.opponents.length === 0) return 1;
-  const minDist = Math.min(
-    ...ctx.opponents.map((o) => Math.sqrt((c.x - o.x) ** 2 + (c.y - o.z) ** 2)),
-  );
-  return Math.min(minDist / 200, 1);
+// ── Formation ─────────────────────────────────────────────────────────────────
+
+type FormationEntry = {
+  defensive: { x: number; y: number };
+  middle: { x: number; y: number };
+  attacking: { x: number; y: number };
 };
+
+const HOME_FORMATION: FormationEntry[] = [
+  {
+    defensive: { x: PITCH_LEFT + 30, y: CY },
+    middle: { x: PITCH_LEFT + 50, y: CY },
+    attacking: { x: PITCH_LEFT + 80, y: CY },
+  },
+  {
+    defensive: { x: PITCH_LEFT + PITCH_W * 0.15, y: CY - 120 },
+    middle: { x: PITCH_LEFT + PITCH_W * 0.25, y: CY - 150 },
+    attacking: { x: PITCH_LEFT + PITCH_W * 0.4, y: CY - 160 },
+  },
+  {
+    defensive: { x: PITCH_LEFT + PITCH_W * 0.15, y: CY + 120 },
+    middle: { x: PITCH_LEFT + PITCH_W * 0.25, y: CY + 150 },
+    attacking: { x: PITCH_LEFT + PITCH_W * 0.4, y: CY + 160 },
+  },
+  {
+    defensive: { x: PITCH_LEFT + PITCH_W * 0.35, y: CY - 60 },
+    middle: { x: PITCH_LEFT + PITCH_W * 0.5, y: CY - 60 },
+    attacking: { x: PITCH_LEFT + PITCH_W * 0.65, y: CY - 80 },
+  },
+  {
+    defensive: { x: PITCH_LEFT + PITCH_W * 0.5, y: CY },
+    middle: { x: PITCH_LEFT + PITCH_W * 0.65, y: CY },
+    attacking: { x: PITCH_LEFT + PITCH_W * 0.8, y: CY },
+  },
+];
+
+function getFormationTarget(
+  entry: FormationEntry,
+  ballX: number,
+): { x: number; y: number } {
+  const t = Math.max(0, Math.min(1, (ballX - PITCH_LEFT) / PITCH_W));
+  const s = t < 0.33 ? t / 0.33 : (t - 0.33) / 0.67;
+  const a = t < 0.33 ? entry.defensive : entry.middle;
+  const b = t < 0.33 ? entry.middle : entry.attacking;
+  return { x: a.x + (b.x - a.x) * s, y: a.y + (b.y - a.y) * s };
+}
 
 // ── Ball ──────────────────────────────────────────────────────────────────────
 
 class Ball extends YUKA.GameEntity {
-  constructor() {
-    super();
+  vel = { x: 0, y: 0 };
+  loose = false;
+  owner: Player | null = null;
+
+  tick() {
+    if (!this.loose) return;
+    this.position.x += this.vel.x;
+    this.position.z += this.vel.y;
+    this.vel.x *= FRICTION;
+    this.vel.y *= FRICTION;
+    if (this.position.x <= PITCH_LEFT) {
+      this.position.x = PITCH_LEFT;
+      this.vel.x = Math.abs(this.vel.x) * 0.6;
+    }
+    if (this.position.x >= PITCH_RIGHT) {
+      this.position.x = PITCH_RIGHT;
+      this.vel.x = -Math.abs(this.vel.x) * 0.6;
+    }
+    if (this.position.z <= PITCH_TOP) {
+      this.position.z = PITCH_TOP;
+      this.vel.y = Math.abs(this.vel.y) * 0.6;
+    }
+    if (this.position.z >= PITCH_BOTTOM) {
+      this.position.z = PITCH_BOTTOM;
+      this.vel.y = -Math.abs(this.vel.y) * 0.6;
+    }
+    if (Math.abs(this.vel.x) < 0.1 && Math.abs(this.vel.y) < 0.1) {
+      this.vel.x = 0;
+      this.vel.y = 0;
+      this.loose = false;
+    }
   }
 }
 
-// ── Player entity ─────────────────────────────────────────────────────────────
+// ── Player ────────────────────────────────────────────────────────────────────
 
 class Player extends YUKA.Vehicle {
   hasBall = false;
   teamHasBall = false;
-  isOpponent = false;
+  isHome: boolean;
+  formationEntry: FormationEntry;
   ball: Ball | null = null;
   opponents: Player[] = [];
+  teammates: Player[] = [];
   tree: BehaviorTree;
   seekBehavior: YUKA.SeekBehavior;
-  targetPos = new YUKA.Vector3(CX, 0, CY);
+  targetPos = new YUKA.Vector3();
 
-  constructor(isOpponent = false) {
+  constructor(isHome: boolean, formationEntry: FormationEntry) {
     super();
-    this.isOpponent = isOpponent;
+    this.isHome = isHome;
+    this.formationEntry = formationEntry;
     this.maxSpeed = 80;
     this.maxForce = 400;
-
     this.seekBehavior = new YUKA.SeekBehavior(this.targetPos);
     this.steering.add(this.seekBehavior);
-
+    const sep = new YUKA.SeparationBehavior();
+    sep.weight = 3;
+    this.steering.add(sep);
     const self = this;
 
-    const shootTask = new Task({
+    // Body_GoToPoint — HELIOS: move to formation position
+    const Body_GoToPoint = new Task({
       run: () => {
-        self.targetPos.set(PITCH_RIGHT, 0, CY);
+        if (!self.ball) return FAILURE;
+        const ballX = self.isHome
+          ? self.ball.position.x
+          : PITCH_RIGHT - (self.ball.position.x - PITCH_LEFT);
+        const t = getFormationTarget(self.formationEntry, ballX);
+        self.targetPos.set(
+          self.isHome ? t.x : PITCH_LEFT + PITCH_RIGHT - t.x,
+          0,
+          t.y,
+        );
         return SUCCESS;
       },
     });
 
-    const receiveTask = new Task({
+    // Body_Intercept — HELIOS: move to intercept/receive position via EQS
+    const Body_Intercept = new Task({
       run: () => {
         if (!self.ball) return FAILURE;
         const ctx: EQSContext = {
-          ball: self.ball.position,
-          opponents: self.opponents.map((o) => o.position),
+          ball: self.ball,
+          opponents: self.opponents,
+          teammates: self.teammates,
         };
-        const best = query(forwardConeGenerator, ctx, [
+        const best = query((c) => forwardConeGenerator(c, self.isHome), ctx, [
           radialProgressTest,
           opponentDistanceTest,
+          teammateSpacingTest,
         ]);
-        self.targetPos.set(best.x, 0, best.y);
+        if (!best) return FAILURE;
+        self.targetPos.set(
+          self.isHome ? best.x : PITCH_LEFT + PITCH_RIGHT - best.x,
+          0,
+          best.y,
+        );
         return SUCCESS;
       },
     });
 
-    const defendTask = new Task({
-      run: () => {
-        self.targetPos.set(PITCH_LEFT + 100, 0, CY);
-        return SUCCESS;
-      },
-    });
-
-    // Opponent just chases ball
-    const chaseTask = new Task({
+    // Body_Dribble + Bhv_Shoot — HELIOS: advance with ball, shoot when in range
+    const Body_Dribble = new Task({
       run: () => {
         if (!self.ball) return FAILURE;
-        self.targetPos.set(self.ball.position.x, 0, self.ball.position.z);
+        const goalX = self.isHome ? PITCH_RIGHT : PITCH_LEFT;
+        const distToGoal = Math.abs(self.position.x - goalX);
+        if (distToGoal < SHOOT_RANGE) {
+          // Bhv_Shoot — Body_SmartKick toward goal
+          const dx = goalX - self.ball.position.x;
+          const dy = CY - self.ball.position.z;
+          const d = Math.sqrt(dx * dx + dy * dy) || 1;
+          self.ball.vel.x = (dx / d) * KICK_POWER;
+          self.ball.vel.y = (dy / d) * KICK_POWER;
+          self.ball.loose = true;
+          self.ball.owner = null;
+          self.hasBall = false;
+          self.teamHasBall = false;
+        } else {
+          self.targetPos.set(goalX, 0, CY);
+          self.ball.position.x = self.position.x;
+          self.ball.position.z = self.position.z;
+        }
         return SUCCESS;
       },
     });
 
-    const tree = isOpponent
-      ? new BehaviorTree({ tree: chaseTask, blackboard: {} })
-      : new BehaviorTree({
-          tree: new Selector({
+    this.tree = new BehaviorTree({
+      tree: new Selector({
+        nodes: [
+          new Sequence({
             nodes: [
-              new Sequence({
-                nodes: [
-                  new Task({ run: () => (self.hasBall ? SUCCESS : FAILURE) }),
-                  shootTask,
-                ],
-              }),
-              new Sequence({
-                nodes: [
-                  new Task({
-                    run: () => (self.teamHasBall ? SUCCESS : FAILURE),
-                  }),
-                  receiveTask,
-                ],
-              }),
-              defendTask,
+              new Task({ run: () => (self.hasBall ? SUCCESS : FAILURE) }),
+              Body_Dribble,
             ],
           }),
-          blackboard: {},
-        });
-
-    this.tree = tree;
+          new Sequence({
+            nodes: [
+              new Task({ run: () => (self.teamHasBall ? SUCCESS : FAILURE) }),
+              Body_Intercept,
+            ],
+          }),
+          Body_GoToPoint,
+        ],
+      }),
+      blackboard: {},
+    });
   }
 
   update(delta: number): this {
     this.tree.step();
     this.seekBehavior.target = this.targetPos;
     super.update(delta);
-    this.velocity.multiplyScalar(0.99); // friction
+    this.velocity.multiplyScalar(0.97);
     return this;
   }
 }
@@ -176,28 +300,17 @@ class Player extends YUKA.Vehicle {
 function render(
   ctx: CanvasRenderingContext2D,
   entityManager: YUKA.EntityManager,
+  ball: Ball,
 ) {
   ctx.clearRect(0, 0, W, H);
-
-  // Pitch stripes
-  const stripeW = (PITCH_RIGHT - PITCH_LEFT) / 10;
+  const stripeW = PITCH_W / 10;
   for (let i = 0; i < 10; i++) {
     ctx.fillStyle = i % 2 === 0 ? "#226632" : "#287840";
-    ctx.fillRect(
-      PITCH_LEFT + i * stripeW,
-      PITCH_TOP,
-      stripeW,
-      PITCH_BOTTOM - PITCH_TOP,
-    );
+    ctx.fillRect(PITCH_LEFT + i * stripeW, PITCH_TOP, stripeW, PITCH_H);
   }
   ctx.strokeStyle = "rgba(255,255,255,0.7)";
   ctx.lineWidth = 2;
-  ctx.strokeRect(
-    PITCH_LEFT,
-    PITCH_TOP,
-    PITCH_RIGHT - PITCH_LEFT,
-    PITCH_BOTTOM - PITCH_TOP,
-  );
+  ctx.strokeRect(PITCH_LEFT, PITCH_TOP, PITCH_W, PITCH_H);
   ctx.beginPath();
   ctx.moveTo(CX, PITCH_TOP);
   ctx.lineTo(CX, PITCH_BOTTOM);
@@ -205,8 +318,6 @@ function render(
   ctx.beginPath();
   ctx.arc(CX, CY, 60, 0, Math.PI * 2);
   ctx.stroke();
-
-  // Goals
   ctx.strokeStyle = "rgba(255,255,255,0.9)";
   ctx.lineWidth = 3;
   ctx.strokeRect(PITCH_LEFT - 20, CY - 60, 20, 120);
@@ -214,28 +325,28 @@ function render(
 
   for (const entity of entityManager.entities) {
     if (entity instanceof Player) {
-      const x = entity.position.x;
-      const y = entity.position.z;
-      ctx.fillStyle = entity.isOpponent ? "#ef4444" : "#3b82f6";
+      const x = entity.position.x,
+        y = entity.position.z;
+      ctx.fillStyle = entity.isHome ? "#3b82f6" : "#ef4444";
       ctx.beginPath();
       ctx.arc(x, y, 10, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = "#fff";
-      ctx.font = "bold 9px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(entity.isOpponent ? "D" : "A", x, y);
-    }
-    if (entity instanceof Ball) {
-      ctx.fillStyle = "#ffffff";
-      ctx.strokeStyle = "#333";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(entity.position.x, entity.position.z, 6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
+      if (entity.hasBall) {
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, 14, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
   }
+  ctx.fillStyle = "#fff";
+  ctx.strokeStyle = "#333";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(ball.position.x, ball.position.z, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -247,38 +358,59 @@ export default function Predict2Page() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
-
     const entityManager = new YUKA.EntityManager();
     const time = new YUKA.Time();
 
-    // Ball
     const ball = new Ball();
     ball.position.set(CX, 0, CY);
     entityManager.add(ball);
 
-    // Home player (attacker)
-    const attacker = new Player(false);
-    attacker.position.set(CX - 100, 0, CY);
-    attacker.teamHasBall = true;
-    attacker.ball = ball;
-    entityManager.add(attacker);
+    const homePlayers: Player[] = [];
+    const awayPlayers: Player[] = [];
 
-    // Opponent (chases ball)
-    const opponent = new Player(true);
-    opponent.position.set(CX + 200, 0, CY + 100);
-    opponent.ball = ball;
-    attacker.opponents = [opponent];
-    entityManager.add(opponent);
+    HOME_FORMATION.forEach((entry) => {
+      const home = new Player(true, entry);
+      home.position.set(entry.defensive.x, 0, entry.defensive.y);
+      home.ball = ball;
+      entityManager.add(home);
+      homePlayers.push(home);
+
+      const away = new Player(false, entry);
+      away.position.set(
+        PITCH_LEFT + PITCH_RIGHT - entry.defensive.x,
+        0,
+        entry.defensive.y,
+      );
+      away.ball = ball;
+      entityManager.add(away);
+      awayPlayers.push(away);
+    });
+
+    homePlayers.forEach((p) => {
+      p.opponents = awayPlayers;
+      p.teammates = homePlayers.filter((t) => t !== p);
+      p.neighbors = [...homePlayers.filter((t) => t !== p), ...awayPlayers];
+    });
+    awayPlayers.forEach((p) => {
+      p.opponents = homePlayers;
+      p.teammates = awayPlayers.filter((t) => t !== p);
+      p.neighbors = [...awayPlayers.filter((t) => t !== p), ...homePlayers];
+    });
+
+    homePlayers[4].hasBall = true;
+    ball.owner = homePlayers[4];
+    ball.position.set(homePlayers[4].position.x, 0, homePlayers[4].position.z);
+    homePlayers.forEach((p) => (p.teamHasBall = true));
 
     let rafId: number;
     function loop() {
       rafId = requestAnimationFrame(loop);
       const delta = time.update().getDelta();
+      ball.tick();
       entityManager.update(delta);
-      render(ctx, entityManager);
+      render(ctx, entityManager, ball);
     }
     loop();
-
     return () => cancelAnimationFrame(rafId);
   }, []);
 
