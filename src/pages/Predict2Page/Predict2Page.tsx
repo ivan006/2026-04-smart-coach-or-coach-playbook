@@ -166,6 +166,7 @@ class Player extends YUKA.Vehicle {
     this.tree.step();
     this.seekBehavior.target = this.targetPos;
     super.update(delta);
+    this.velocity.multiplyScalar(0.99); // friction
     return this;
   }
 }
