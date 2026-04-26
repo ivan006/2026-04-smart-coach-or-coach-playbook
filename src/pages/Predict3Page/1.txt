@@ -1,4 +1,3 @@
-PS C:\Users\ivanc\Documents\Github\helios-base2> tree /f
 Folder PATH listing
 Volume serial number is 34D6-5591
 C:.
@@ -53,7 +52,6 @@ C:.
 │   │       goalie-catch-opp.conf
 │   │       goalie-catch-our.conf
 │   │       goalie-formation.conf
-│   │       indirect-freekick-opp-formation.conf
 │   │       indirect-freekick-opp-formation.conf
 │   │       indirect-freekick-our-formation.conf
 │   │       kickin-our-formation.conf
@@ -402,3 +400,5 @@ C:.
         start1.tmpl
         start2.tmpl
         start3.tmpl
+
+PS C:\Users\ivanc\Documents\Github\helios-base2>
