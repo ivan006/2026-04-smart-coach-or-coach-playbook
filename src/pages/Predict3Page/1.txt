@@ -1,0 +1,404 @@
+PS C:\Users\ivanc\Documents\Github\helios-base2> tree /f
+Folder PATH listing
+Volume serial number is 34D6-5591
+C:.
+│   .gitignore
+│   AUTHORS
+│   bootstrap
+│   ChangeLog
+│   cmake-config.h.in
+│   CMakeLists.txt
+│   configure.ac
+│   LICENSE
+│   Makefile.am
+│   NEWS
+│   NEWS.en
+│   README
+│   README.en
+│   README.md
+│
+├───m4
+│       ax_boost_base.m4
+│       ax_boost_system.m4
+│       ax_cxx_compile_stdcxx.m4
+│       ax_cxx_compile_stdcxx_14.m4
+│       ax_cxx_compile_stdcxx_17.m4
+│
+├───src
+│   │   CMakeLists.txt
+│   │   coach.conf
+│   │   keepaway.sh.in
+│   │   Makefile.am
+│   │   player.conf
+│   │   start-debug.sh
+│   │   start-offline.sh
+│   │   start.sh.in
+│   │   team_logo.xpm
+│   │   train.sh.in
+│   │
+│   ├───coach
+│   │       CMakeLists.txt
+│   │       main_coach.cpp
+│   │       Makefile.am
+│   │       sample_coach.cpp
+│   │       sample_coach.h
+│   │       sample_freeform_message.cpp
+│   │       sample_freeform_message.h
+│   │
+│   ├───formations-dt
+│   │       before-kick-off.conf
+│   │       defense-formation.conf
+│   │       goal-kick-opp.conf
+│   │       goal-kick-our.conf
+│   │       goalie-catch-opp.conf
+│   │       goalie-catch-our.conf
+│   │       goalie-formation.conf
+│   │       indirect-freekick-opp-formation.conf
+│   │       indirect-freekick-opp-formation.conf
+│   │       indirect-freekick-our-formation.conf
+│   │       kickin-our-formation.conf
+│   │       normal-formation.conf
+│   │       offense-formation.conf
+│   │       setplay-opp-formation.conf
+│   │       setplay-our-formation.conf
+│   │
+│   ├───formations-keeper
+│   │       before-kick-off.conf
+│   │       defense-formation.conf
+│   │       goal-kick-opp.conf
+│   │       goal-kick-our.conf
+│   │       goalie-catch-opp.conf
+│   │       goalie-catch-our.conf
+│   │       goalie-formation.conf
+│   │       indirect-freekick-opp-formation.conf
+│   │       indirect-freekick-our-formation.conf
+│   │       kickin-our-formation.conf
+│   │       normal-formation.conf
+│   │       offense-formation.conf
+│   │       setplay-opp-formation.conf
+│   │       setplay-our-formation.conf
+│   │
+│   ├───formations-taker
+│   │       before-kick-off.conf
+│   │       defense-formation.conf
+│   │       goal-kick-opp.conf
+│   │       goal-kick-our.conf
+│   │       goalie-catch-opp.conf
+│   │       goalie-catch-our.conf
+│   │       goalie-formation.conf
+│   │       indirect-freekick-opp-formation.conf
+│   │       indirect-freekick-our-formation.conf
+│   │       kickin-our-formation.conf
+│   │       normal-formation.conf
+│   │       offense-formation.conf
+│   │       setplay-opp-formation.conf
+│   │       setplay-our-formation.conf
+│   │
+│   ├───obsolete
+│   │   │   reconnect.sh.in
+│   │   │   start-oz.sh
+│   │   │
+│   │   ├───formations-bpn
+│   │   │       before-kick-off.conf
+│   │   │       defense-formation.conf
+│   │   │       defense-formation.dat
+│   │   │       goal-kick-opp.conf
+│   │   │       goal-kick-our.conf
+│   │   │       goalie-catch-opp.conf
+│   │   │       goalie-catch-our.conf
+│   │   │       kickin-our-formation.conf
+│   │   │       kickin-our-formation.dat
+│   │   │       offense-formation.conf
+│   │   │       offense-formation.dat
+│   │   │       setplay-our-formation.conf
+│   │   │       setplay-our-formation.dat
+│   │   │
+│   │   └───formations-uva
+│   │           before-kick-off.conf
+│   │           goal-kick-opp.conf
+│   │           goal-kick-our.conf
+│   │           goalie-catch-opp.conf
+│   │           goalie-catch-our.conf
+│   │           goalie-formation.conf
+│   │           indirect-freekick-opp-formation.conf
+│   │           indirect-freekick-our-formation.conf
+│   │           kickin-our-formation.conf
+│   │           normal-formation.conf
+│   │           setplay-opp-formation.conf
+│   │           setplay-our-formation.conf
+│   │
+│   ├───player
+│   │   │   bhv_basic_move.cpp
+│   │   │   bhv_basic_move.h
+│   │   │   bhv_basic_tackle.cpp
+│   │   │   bhv_basic_tackle.h
+│   │   │   bhv_custom_before_kick_off.cpp
+│   │   │   bhv_custom_before_kick_off.h
+│   │   │   bhv_goalie_basic_move.cpp
+│   │   │   bhv_goalie_basic_move.h
+│   │   │   bhv_goalie_chase_ball.cpp
+│   │   │   bhv_goalie_chase_ball.h
+│   │   │   bhv_goalie_free_kick.cpp
+│   │   │   bhv_goalie_free_kick.h
+│   │   │   bhv_penalty_kick.cpp
+│   │   │   bhv_penalty_kick.h
+│   │   │   CMakeLists.txt
+│   │   │   communication.h
+│   │   │   intention_receive.cpp
+│   │   │   intention_receive.h
+│   │   │   intercept_evaluator_sample.cpp
+│   │   │   intercept_evaluator_sample.h
+│   │   │   keepaway_communication.cpp
+│   │   │   keepaway_communication.h
+│   │   │   main_player.cpp
+│   │   │   Makefile.am
+│   │   │   neck_default_intercept_neck.cpp
+│   │   │   neck_default_intercept_neck.h
+│   │   │   neck_goalie_turn_neck.cpp
+│   │   │   neck_goalie_turn_neck.h
+│   │   │   neck_offensive_intercept_neck.cpp
+│   │   │   neck_offensive_intercept_neck.h
+│   │   │   role_center_back.cpp
+│   │   │   role_center_back.h
+│   │   │   role_center_forward.cpp
+│   │   │   role_center_forward.h
+│   │   │   role_defensive_half.cpp
+│   │   │   role_defensive_half.h
+│   │   │   role_goalie.cpp
+│   │   │   role_goalie.h
+│   │   │   role_keepaway_keeper.cpp
+│   │   │   role_keepaway_keeper.h
+│   │   │   role_keepaway_taker.cpp
+│   │   │   role_keepaway_taker.h
+│   │   │   role_offensive_half.cpp
+│   │   │   role_offensive_half.h
+│   │   │   role_sample.cpp
+│   │   │   role_sample.h
+│   │   │   role_side_back.cpp
+│   │   │   role_side_back.h
+│   │   │   role_side_forward.cpp
+│   │   │   role_side_forward.h
+│   │   │   role_side_half.cpp
+│   │   │   role_side_half.h
+│   │   │   sample_communication.cpp
+│   │   │   sample_communication.h
+│   │   │   sample_field_evaluator.cpp
+│   │   │   sample_field_evaluator.h
+│   │   │   sample_freeform_message_parser.cpp
+│   │   │   sample_freeform_message_parser.h
+│   │   │   sample_player.cpp
+│   │   │   sample_player.h
+│   │   │   soccer_role.cpp
+│   │   │   soccer_role.h
+│   │   │   strategy.cpp
+│   │   │   strategy.h
+│   │   │   view_tactical.cpp
+│   │   │   view_tactical.h
+│   │   │
+│   │   ├───basic_actions
+│   │   │   │   arm_off.h
+│   │   │   │   arm_point_to_point.h
+│   │   │   │   basic_actions.cpp
+│   │   │   │   basic_actions.h
+│   │   │   │   bhv_before_kick_off.cpp
+│   │   │   │   bhv_before_kick_off.h
+│   │   │   │   bhv_body_neck_to_ball.h
+│   │   │   │   bhv_body_neck_to_point.h
+│   │   │   │   bhv_emergency.cpp
+│   │   │   │   bhv_emergency.h
+│   │   │   │   bhv_go_to_point_look_ball.cpp
+│   │   │   │   bhv_go_to_point_look_ball.h
+│   │   │   │   bhv_neck_body_to_ball.h
+│   │   │   │   bhv_neck_body_to_point.h
+│   │   │   │   bhv_scan_field.cpp
+│   │   │   │   bhv_scan_field.h
+│   │   │   │   body_advance_ball.h
+│   │   │   │   body_advance_ball2009.cpp
+│   │   │   │   body_advance_ball2009.h
+│   │   │   │   body_clear_ball.h
+│   │   │   │   body_clear_ball2009.cpp
+│   │   │   │   body_clear_ball2009.h
+│   │   │   │   body_dribble.h
+│   │   │   │   body_dribble2008.cpp
+│   │   │   │   body_dribble2008.h
+│   │   │   │   body_go_to_point.cpp
+│   │   │   │   body_go_to_point.h
+│   │   │   │   body_go_to_point_dodge.cpp
+│   │   │   │   body_go_to_point_dodge.h
+│   │   │   │   body_hold_ball.h
+│   │   │   │   body_hold_ball2008.cpp
+│   │   │   │   body_hold_ball2008.h
+│   │   │   │   body_intercept.h
+│   │   │   │   body_intercept2018.cpp
+│   │   │   │   body_intercept2018.h
+│   │   │   │   body_kick_one_step.cpp
+│   │   │   │   body_kick_one_step.h
+│   │   │   │   body_kick_to_relative.cpp
+│   │   │   │   body_kick_to_relative.h
+│   │   │   │   body_pass.cpp
+│   │   │   │   body_pass.h
+│   │   │   │   body_smart_kick.cpp
+│   │   │   │   body_smart_kick.h
+│   │   │   │   body_stop_ball.cpp
+│   │   │   │   body_stop_ball.h
+│   │   │   │   body_stop_dash.cpp
+│   │   │   │   body_stop_dash.h
+│   │   │   │   body_tackle_to_point.h
+│   │   │   │   body_turn_to_angle.h
+│   │   │   │   body_turn_to_ball.h
+│   │   │   │   body_turn_to_point.h
+│   │   │   │   focus_move_to_point.cpp
+│   │   │   │   focus_move_to_point.h
+│   │   │   │   focus_reset.cpp
+│   │   │   │   focus_reset.h
+│   │   │   │   intention_dribble2008.cpp
+│   │   │   │   intention_dribble2008.h
+│   │   │   │   intention_time_limit_action.cpp
+│   │   │   │   intention_time_limit_action.h
+│   │   │   │   intercept_evaluator.cpp
+│   │   │   │   intercept_evaluator.h
+│   │   │   │   intercept_evaluator_factory.cpp
+│   │   │   │   intercept_evaluator_factory.h
+│   │   │   │   kick_table.cpp
+│   │   │   │   kick_table.h
+│   │   │   │   Makefile
+│   │   │   │   neck_scan_field.cpp
+│   │   │   │   neck_scan_field.h
+│   │   │   │   neck_scan_players.cpp
+│   │   │   │   neck_scan_players.h
+│   │   │   │   neck_turn_to_ball.h
+│   │   │   │   neck_turn_to_ball_and_player.cpp
+│   │   │   │   neck_turn_to_ball_and_player.h
+│   │   │   │   neck_turn_to_ball_or_scan.cpp
+│   │   │   │   neck_turn_to_ball_or_scan.h
+│   │   │   │   neck_turn_to_goalie_or_scan.cpp
+│   │   │   │   neck_turn_to_goalie_or_scan.h
+│   │   │   │   neck_turn_to_low_conf_teammate.cpp
+│   │   │   │   neck_turn_to_low_conf_teammate.h
+│   │   │   │   neck_turn_to_player_or_scan.cpp
+│   │   │   │   neck_turn_to_player_or_scan.h
+│   │   │   │   neck_turn_to_point.h
+│   │   │   │   neck_turn_to_relative.h
+│   │   │   │   view_change_width.h
+│   │   │   │   view_normal.h
+│   │   │   │   view_synch.cpp
+│   │   │   │   view_synch.h
+│   │   │   │   view_wide.h
+│   │   │   │
+│   │   │   └───obsolete
+│   │   │           body_intercept2009.cpp
+│   │   │           body_intercept2009.h
+│   │   │
+│   │   ├───extensions
+│   │   ├───planner
+│   │   │       actgen_action_chain_length_filter.h
+│   │   │       actgen_cross.cpp
+│   │   │       actgen_cross.h
+│   │   │       actgen_direct_pass.cpp
+│   │   │       actgen_direct_pass.h
+│   │   │       actgen_self_pass.cpp
+│   │   │       actgen_self_pass.h
+│   │   │       actgen_shoot.cpp
+│   │   │       actgen_shoot.h
+│   │   │       actgen_short_dribble.cpp
+│   │   │       actgen_short_dribble.h
+│   │   │       actgen_simple_dribble.cpp
+│   │   │       actgen_simple_dribble.h
+│   │   │       actgen_strict_check_pass.cpp
+│   │   │       actgen_strict_check_pass.h
+│   │   │       action_chain_graph.cpp
+│   │   │       action_chain_graph.h
+│   │   │       action_chain_holder.cpp
+│   │   │       action_chain_holder.h
+│   │   │       action_generator.h
+│   │   │       action_state_pair.h
+│   │   │       bhv_normal_dribble.cpp
+│   │   │       bhv_normal_dribble.h
+│   │   │       bhv_pass_kick_find_receiver.cpp
+│   │   │       bhv_pass_kick_find_receiver.h
+│   │   │       bhv_planned_action.cpp
+│   │   │       bhv_planned_action.h
+│   │   │       bhv_strict_check_shoot.cpp
+│   │   │       bhv_strict_check_shoot.h
+│   │   │       body_force_shoot.cpp
+│   │   │       body_force_shoot.h
+│   │   │       clear_ball.cpp
+│   │   │       clear_ball.h
+│   │   │       clear_generator.cpp
+│   │   │       clear_generator.h
+│   │   │       cooperative_action.cpp
+│   │   │       cooperative_action.h
+│   │   │       cross_generator.cpp
+│   │   │       cross_generator.h
+│   │   │       dribble.cpp
+│   │   │       dribble.h
+│   │   │       field_analyzer.cpp
+│   │   │       field_analyzer.h
+│   │   │       field_evaluator.h
+│   │   │       hold_ball.cpp
+│   │   │       hold_ball.h
+│   │   │       Makefile
+│   │   │       neck_turn_to_receiver.cpp
+│   │   │       neck_turn_to_receiver.h
+│   │   │       pass.cpp
+│   │   │       pass.h
+│   │   │       pass_checker.h
+│   │   │       positioning.cpp
+│   │   │       positioning.h
+│   │   │       predict_ball_object.h
+│   │   │       predict_player_object.h
+│   │   │       predict_state.cpp
+│   │   │       predict_state.h
+│   │   │       self_pass_generator.cpp
+│   │   │       self_pass_generator.h
+│   │   │       shoot.cpp
+│   │   │       shoot.h
+│   │   │       shoot_generator.cpp
+│   │   │       shoot_generator.h
+│   │   │       short_dribble_generator.cpp
+│   │   │       short_dribble_generator.h
+│   │   │       simple_pass_checker.cpp
+│   │   │       simple_pass_checker.h
+│   │   │       strict_check_pass_generator.cpp
+│   │   │       strict_check_pass_generator.h
+│   │   │       tackle_generator.cpp
+│   │   │       tackle_generator.h
+│   │   │
+│   │   └───setplay
+│   │           bhv_go_to_placed_ball.cpp
+│   │           bhv_go_to_placed_ball.h
+│   │           bhv_prepare_set_play_kick.cpp
+│   │           bhv_prepare_set_play_kick.h
+│   │           bhv_set_play.cpp
+│   │           bhv_set_play.h
+│   │           bhv_set_play_free_kick.cpp
+│   │           bhv_set_play_free_kick.h
+│   │           bhv_set_play_goal_kick.cpp
+│   │           bhv_set_play_goal_kick.h
+│   │           bhv_set_play_indirect_free_kick.cpp
+│   │           bhv_set_play_indirect_free_kick.h
+│   │           bhv_set_play_kick_in.cpp
+│   │           bhv_set_play_kick_in.h
+│   │           bhv_set_play_kick_off.cpp
+│   │           bhv_set_play_kick_off.h
+│   │           bhv_their_goal_kick_move.cpp
+│   │           bhv_their_goal_kick_move.h
+│   │           intention_wait_after_set_play_kick.cpp
+│   │           intention_wait_after_set_play_kick.h
+│   │           Makefile
+│   │
+│   └───trainer
+│           CMakeLists.txt
+│           main_trainer.cpp
+│           Makefile.am
+│           sample_trainer.cpp
+│           sample_trainer.h
+│
+└───ssil
+        kill1.tmpl
+        kill2.tmpl
+        kill3.tmpl
+        start
+        start1.tmpl
+        start2.tmpl
+        start3.tmpl
