@@ -88,24 +88,22 @@ Players can switch jobs many times in a few seconds.
 
 ## The Six Buckets
 
-To make football easier to understand, split everything into six buckets.
+These buckets are labels for sorting the old system's ideas.
+
+They should not add new football ideas by themselves. They only help us name what the old system already does.
 
 | Bucket | Simple meaning | Examples |
 | --- | --- | --- |
 | World facts | What is true right now | Ball position, pressure, open space, who arrives first |
-| Decision actions | Choosing what matters | Attack, defend, keep, risk, recover |
+| Decision actions | Choosing the situation | Attack, defend, normal, contest |
 | Executive actions | Doing something with the ball | Shoot, pass, dribble, hold, clear |
-| Prep actions | Getting ready before the ball comes | Unmark, support, open passing angle |
+| Prep actions | Getting ready before the ball comes | Mostly unmarking and receiving for passes |
 | Positioning actions | Standing in the right place for the team | Keep shape, cover space, stretch width |
 | Defensive actions | Stopping the opponent | Press, block, mark, intercept, recover |
 
-This is important because not every player is trying to touch the ball.
+The important rule is: first extract the old behaviour, then place it in a bucket.
 
-Sometimes the best action is a prep action: move early so a pass becomes possible.
-
-Sometimes the best action is a positioning action: stand in the place that protects the team.
-
-Sometimes the best action is a defensive action: stop the opponent's next good move before it starts.
+Do not create a new behaviour just because a bucket exists.
 
 ---
 

@@ -73,20 +73,22 @@ EQS queries should not recalculate raw soccer context ad hoc. Build one shared w
 
 ---
 
-## Action Buckets
+## Distillation Buckets
+
+These buckets are a classification layer for extracted Cyrus behaviours. They are not new behaviours by themselves.
+
+Use them to sort the old system's logic before translating it into EQS.
+
+| Bucket | What it means in the old system | Evidence level |
+| --- | --- | --- |
+| World facts | Shared measurements used by decisions: intercept steps, pressure, open space, offside line, goal angle | Strong |
+| Decision actions | Phase/context decisions such as offense, defense, normal, contest, or special game mode | Strong |
+| Executive actions | Ball-use actions: shoot, pass, dribble, hold, clear, tackle/intercept execution | Strong |
+| Prep actions | Off-ball actions that prepare a later ball action, mainly receiving/unmarking for passes | Strong for pass receiving, weak elsewhere |
+| Positioning actions | Role/home/shape movement and spatial occupation when not directly executing on the ball | Strong |
+| Defensive actions | Pressing, blocking, marking, covering, tackling, intercepting, keeper defense | Strong |
 
 Candidate generation should be broad and cheap. Scoring should decide.
-
-These buckets are the shared vocabulary between the simple football framework and the EQS implementation.
-
-| Bucket | Role in SoccerSim |
-| --- | --- |
-| World facts | Shared analyzed state used by all queries |
-| Decision actions | Phase and intent choices that tune weights |
-| Executive actions | On-ball actions that directly move or use the ball |
-| Prep actions | Off-ball attacking actions that prepare future options |
-| Positioning actions | Shape and space actions that keep the team balanced |
-| Defensive actions | Actions that reduce opponent control or goal danger |
 
 ### Executive Actions
 
@@ -102,11 +104,13 @@ These buckets are the shared vocabulary between the simple football framework an
 
 ### Prep Actions
 
-| Candidate      | Source principle                                                       | Generator                                              |
-| -------------- | ---------------------------------------------------------------------- | ------------------------------------------------------ |
-| `SupportRun`   | Move to useful passing angle near carrier                              | Sample around role corridor and ball carrier           |
-| `UnmarkRun`    | Cyrus unmark samples positions and scores pass quality plus separation | Sample 2-7 units around current position and role lane |
-| `AttackSpace`  | Run into future receiving point                                        | Sample behind midfield/defensive line when safe        |
+The old system's clearest prep action is pass-receiving preparation. Do not generalize this bucket to every executive action without source evidence.
+
+| Classification label | Source principle | Generator |
+| --- | --- | --- |
+| `SupportRun` | Receiver movement that creates a usable pass angle | Sample around role corridor and ball carrier |
+| `UnmarkRun` | Cyrus unmark samples positions and scores pass quality plus separation | Sample 2-7 units around current position and role lane |
+| `AttackSpace` | Lead/through receiving point created ahead of the current receiver | Sample behind midfield/defensive line when safe |
 
 ### Positioning Actions
 
@@ -146,8 +150,6 @@ Decision actions do not directly move a player. They choose the context that cha
 | `TransitionToAttack` | We have just won the ball | Raises secure possession and fast forward outlet weights |
 | `TransitionToDefense` | We have just lost the ball | Raises counter-press, lane blocking, and recovery weights |
 | `Contest` | Ball is loose or race is close | Raises intercept, second-ball, and compact support weights |
-
----
 
 ## Query Library
 
