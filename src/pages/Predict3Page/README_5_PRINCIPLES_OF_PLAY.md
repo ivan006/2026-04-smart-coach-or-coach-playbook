@@ -73,11 +73,22 @@ EQS queries should not recalculate raw soccer context ad hoc. Build one shared w
 
 ---
 
-## Candidate Types
+## Action Buckets
 
 Candidate generation should be broad and cheap. Scoring should decide.
 
-### On-Ball Candidates
+These buckets are the shared vocabulary between the simple football framework and the EQS implementation.
+
+| Bucket | Role in SoccerSim |
+| --- | --- |
+| World facts | Shared analyzed state used by all queries |
+| Decision actions | Phase and intent choices that tune weights |
+| Executive actions | On-ball actions that directly move or use the ball |
+| Prep actions | Off-ball attacking actions that prepare future options |
+| Positioning actions | Shape and space actions that keep the team balanced |
+| Defensive actions | Actions that reduce opponent control or goal danger |
+
+### Executive Actions
 
 | Candidate     | Source principle                                                   | Generator                                            |
 | ------------- | ------------------------------------------------------------------ | ---------------------------------------------------- |
@@ -89,28 +100,33 @@ Candidate generation should be broad and cheap. Scoring should decide.
 | `HoldBall`    | Retain possession under pressure                                   | Candidate when no progressive option is safe         |
 | `ClearBall`   | Emergency territorial relief                                       | Candidate when own goal danger is high               |
 
-### Off-Ball Attacking Candidates
+### Prep Actions
 
 | Candidate      | Source principle                                                       | Generator                                              |
 | -------------- | ---------------------------------------------------------------------- | ------------------------------------------------------ |
 | `SupportRun`   | Move to useful passing angle near carrier                              | Sample around role corridor and ball carrier           |
 | `UnmarkRun`    | Cyrus unmark samples positions and scores pass quality plus separation | Sample 2-7 units around current position and role lane |
-| `StretchWidth` | Preserve wide outlet and defensive spread                              | Sample wide corridor anchors                           |
 | `AttackSpace`  | Run into future receiving point                                        | Sample behind midfield/defensive line when safe        |
-| `RecoverShape` | Return toward role home position                                       | Candidate always available                             |
 
-### Defensive Candidates
+### Positioning Actions
+
+| Candidate      | Source principle                          | Generator                       |
+| -------------- | ----------------------------------------- | ------------------------------- |
+| `StretchWidth` | Preserve wide outlet and defensive spread | Sample wide corridor anchors    |
+| `RecoverShape` | Return toward role home position          | Candidate always available      |
+| `CoverZone`    | Formation and defensive positioning       | Target uncovered important zone |
+
+### Defensive Actions
 
 | Candidate         | Source principle                                           | Generator                                        |
 | ----------------- | ---------------------------------------------------------- | ------------------------------------------------ |
 | `Intercept`       | Basic move prioritizes interception when race is favorable | Target predicted ball point                      |
 | `PressBall`       | Role-aware pressing margins in basic move                  | Target opponent carrier with pressure angle      |
 | `BlockLane`       | Basic block predicts opponent dribble path                 | Target lane between carrier and dangerous space  |
-| `CoverZone`       | Formation and defensive positioning                        | Target uncovered dangerous zone                  |
 | `MarkReceiver`    | Deny likely pass option                                    | Target receiver-side marking position            |
 | `OffsideTrapStep` | Cyrus can trigger trap in specific defensive contexts      | Step line forward only when coordinated and safe |
 
-### Goalkeeper Candidates
+### Goalkeeper Actions
 
 | Candidate             | Source principle                                       | Generator                               |
 | --------------------- | ------------------------------------------------------ | --------------------------------------- |
@@ -118,6 +134,18 @@ Candidate generation should be broad and cheap. Scoring should decide.
 | `KeeperChase`         | Chase when ball enters reachable penalty trajectory    | Target ball intercept point             |
 | `KeeperBlockShot`     | React to confirmed shot path                           | Target projected goal-line intersection |
 | `KeeperRecoverCenter` | Correct X/Y/body angle when no emergency               | Target optimal set position             |
+
+### Decision Actions
+
+Decision actions do not directly move a player. They choose the context that changes how candidates are scored.
+
+| Decision | Source principle | Effect |
+| --- | --- | --- |
+| `Attack` | Our team reaches or controls the ball first | Raises progress, support, and shot-access weights |
+| `Defense` | Opponent reaches or controls the ball first | Raises pressure, cover, and goal-protection weights |
+| `TransitionToAttack` | We have just won the ball | Raises secure possession and fast forward outlet weights |
+| `TransitionToDefense` | We have just lost the ball | Raises counter-press, lane blocking, and recovery weights |
+| `Contest` | Ball is loose or race is close | Raises intercept, second-ball, and compact support weights |
 
 ---
 
