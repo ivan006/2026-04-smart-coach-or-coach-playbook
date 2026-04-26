@@ -14,9 +14,11 @@ Agents don't follow scripts. They continuously evaluate candidate actions agains
 
 ## Philosophical Foundation
 
-The domain model is drawn from the **RoboCup2D / HELIOS Base** framework ([helios-base/helios-base](https://github.com/helios-base/helios-base)) and its companion tutorial ([herodrigues.github.io/robocup2d-tutorial](https://herodrigues.github.io/robocup2d-tutorial)). These represent a rigorous, research-grade approach to multi-agent soccer simulation — including concepts like cooperative action chaining, predict-state lookahead, field analysis, and role-based dynamic positioning.
+The domain model is drawn from the **RoboCup2D / agent2d** ecosystem and its companion tutorial ([herodrigues.github.io/robocup2d-tutorial](https://herodrigues.github.io/robocup2d-tutorial)). These represent a rigorous, research-grade approach to multi-agent soccer simulation — including concepts like cooperative action chaining, predict-state lookahead, field analysis, and role-based dynamic positioning.
 
-Where HELIOS Base hardcodes decisions as C++ priority cascades (essentially: _if situation X then action Y, else try Z_), SoccerSim replaces that entire decision layer with a **scored candidate model**: every possible action is a candidate, every environmental factor is a query, and the winner is the highest aggregate score. The domain knowledge from RoboCup2D is preserved — it's just expressed as scoring weights rather than branching conditions.
+The two reference codebases sit in a lineage: **agent2d** ([2DSimulation/agent-2d](https://github.com/2DSimulation/agent-2d)) is the original base team framework built on `librcsc` that the tutorial documents; **HELIOS Base** ([helios-base/helios-base](https://github.com/helios-base/helios-base)) is the actively maintained evolution of those same ideas by the same research group, and is the more useful code reference today. Conceptually they express the same architecture — the tutorial explains it, helios-base is the cleaner implementation.
+
+Where both hardcode decisions as C++ priority cascades (essentially: _if situation X then action Y, else try Z_), SoccerSim replaces that entire decision layer with a **scored candidate model**: every possible action is a candidate, every environmental factor is a query, and the winner is the highest aggregate score. The domain knowledge from RoboCup2D is preserved — it's just expressed as scoring weights rather than branching conditions.
 
 ---
 
@@ -88,8 +90,11 @@ BehaviorTree.js and Yuka are complementary, not redundant. The BT manages strate
 
 ## Reference Sources
 
+- **agent2d** (C++, GPL-3.0) — [github.com/2DSimulation/agent-2d](https://github.com/2DSimulation/agent-2d)  
+  Original base team framework built on `librcsc`. The tutorial documents this codebase. Primary source for conceptual model: action chains, behaviours, roles, strategy.
+
 - **HELIOS Base** (C++, MIT) — [github.com/helios-base/helios-base](https://github.com/helios-base/helios-base)  
-  Primary domain reference. Concepts translated: cooperative action chains, field analysis, dynamic positioning, role architecture, predict-state lookahead.
+  Modern evolution of agent2d by the same research group. Cleaner, actively maintained. Better code reference for implementation detail.
 
 - **RoboCup2D Tutorial** — [herodrigues.github.io/robocup2d-tutorial](https://herodrigues.github.io/robocup2d-tutorial)  
   Explanatory companion covering agent2D behaviours, roles, strategy, and librcsc geometry primitives.
