@@ -14,61 +14,42 @@ export default function Print3D() {
       `; Strip: ${stripLength} x ${stripWidth} x ${stripThickness} mm`,
       `; Bristles: ${bristleLength} mm`,
       "",
-      "G21 ; millimetres",
-      "G90 ; absolute positioning",
-      "M82 ; absolute extrusion",
-      "G28 ; home",
+      "G21",
+      "G90",
+      "M82",
+      "G28",
       "M104 S215",
       "M109 S215",
       "G92 E0",
       "",
+      "; BASE STRIP",
+      "G0 Z0.2",
+      "G0 X0 Y0",
+      `G1 X${stripLength} Y0 E${stripLength * 0.04}`,
+      `G1 X${stripLength} Y${stripWidth} E${stripWidth * 0.04}`,
+      `G1 X0 Y${stripWidth} E${stripLength * 0.04}`,
+      `G1 X0 Y0 E${stripWidth * 0.04}`,
+      "",
+      "; BRISTLES",
     ];
 
-    // Print the rectangular base strip.
-    lines.push("; BASE STRIP");
-
-    const z = 0.2;
-    const extrusionPerMm = 0.04;
-
-    lines.push(`G0 Z${z}`);
-    lines.push("G0 X0 Y0");
-
-    lines.push(`G1 X${stripLength} Y0 E${stripLength * extrusionPerMm}`);
-    lines.push(
-      `G1 X${stripLength} Y${stripWidth} E${stripWidth * extrusionPerMm}`,
-    );
-    lines.push(`G1 X0 Y${stripWidth} E${stripLength * extrusionPerMm}`);
-    lines.push(`G1 X0 Y0 E${stripWidth * extrusionPerMm}`);
-
-    // Generate sideways bristles along one long edge.
-    lines.push("");
-    lines.push("; BRISTLES");
-
-    let e = stripLength * extrusionPerMm * 2;
+    let e = stripLength * 0.08;
 
     for (let x = 0; x <= stripLength; x += bristleSpacing) {
-      // Move to the edge.
       lines.push(`G0 X${x.toFixed(3)} Y${stripWidth}`);
 
-      // Extrude a small anchor.
       e += 0.08;
       lines.push(`G1 E${e.toFixed(4)}`);
 
-      // Rapid sideways movement stretches the molten filament.
       lines.push(
         `G0 X${x.toFixed(3)} Y${(stripWidth + bristleLength).toFixed(3)}`,
       );
 
-      // Retract before moving to the next bristle.
       e -= 0.05;
       lines.push(`G1 E${e.toFixed(4)}`);
     }
 
-    lines.push("");
-    lines.push("M104 S0");
-    lines.push("M140 S0");
-    lines.push("G28 X0");
-    lines.push("M84");
+    lines.push("", "M104 S0", "M140 S0", "G28 X0", "M84");
 
     const blob = new Blob([lines.join("\n")], {
       type: "text/plain",
@@ -84,77 +65,119 @@ export default function Print3D() {
     URL.revokeObjectURL(url);
   }
 
-  return (
-    <div className="ml-20 min-h-screen p-6 space-y-8">
-      <h1 className="text-3xl font-bold">3D Printed Bristle Generator</h1>
-
-      <section className="rounded-lg border p-6 space-y-6">
-        <h2 className="text-xl font-semibold">Strip</h2>
-
-        <NumberInput
-          label="Strip length (mm)"
-          value={stripLength}
-          setValue={setStripLength}
-        />
-
-        <NumberInput
-          label="Strip width (mm)"
-          value={stripWidth}
-          setValue={setStripWidth}
-        />
-
-        <NumberInput
-          label="Strip thickness (mm)"
-          value={stripThickness}
-          setValue={setStripThickness}
-        />
-      </section>
-
-      <section className="rounded-lg border p-6 space-y-6">
-        <h2 className="text-xl font-semibold">Bristles</h2>
-
-        <NumberInput
-          label="Bristle length (mm)"
-          value={bristleLength}
-          setValue={setBristleLength}
-        />
-
-        <NumberInput
-          label="Bristle spacing (mm)"
-          value={bristleSpacing}
-          setValue={setBristleSpacing}
-        />
-
-        <NumberInput
-          label="Bristle thickness (mm)"
-          value={bristleThickness}
-          setValue={setBristleThickness}
-        />
-      </section>
-
-      <button
-        onClick={generateGCode}
-        className="rounded bg-black px-6 py-3 text-white"
-      >
-        Generate G-code
-      </button>
-    </div>
-  );
-}
-
-function NumberInput({ label, value, setValue }) {
-  return (
+  const NumberInput = ({ label, value, setValue }) => (
     <label className="block">
-      <span className="block mb-2">{label}</span>
+      <span className="mb-2 block text-sm font-medium">{label}</span>
 
       <input
         type="number"
         value={value}
-        onChange={(e) => setValue(Number(e.target.value))}
-        className="border rounded px-3 py-2 w-full"
         min="0"
         step="0.1"
+        onChange={(e) => setValue(Number(e.target.value))}
+        className="w-full rounded border px-3 py-2"
       />
     </label>
+  );
+
+  return (
+    <div className="min-h-screen px-4 py-6 sm:px-6 lg:px-10">
+      <div className="mx-auto max-w-7xl space-y-8">
+        <header>
+          <h1 className="text-3xl font-bold sm:text-4xl">
+            3D Printed Bristle Generator
+          </h1>
+
+          <p className="mt-2 text-sm text-gray-600">
+            Generate sideways-extruded bristles from a simple printed strip.
+          </p>
+        </header>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <section className="rounded-xl border p-5 sm:p-6">
+            <h2 className="mb-6 text-xl font-semibold">Strip</h2>
+
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <NumberInput
+                label="Length (mm)"
+                value={stripLength}
+                setValue={setStripLength}
+              />
+
+              <NumberInput
+                label="Width (mm)"
+                value={stripWidth}
+                setValue={setStripWidth}
+              />
+
+              <NumberInput
+                label="Thickness (mm)"
+                value={stripThickness}
+                setValue={setStripThickness}
+              />
+            </div>
+          </section>
+
+          <section className="rounded-xl border p-5 sm:p-6">
+            <h2 className="mb-6 text-xl font-semibold">Bristles</h2>
+
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <NumberInput
+                label="Length (mm)"
+                value={bristleLength}
+                setValue={setBristleLength}
+              />
+
+              <NumberInput
+                label="Spacing (mm)"
+                value={bristleSpacing}
+                setValue={setBristleSpacing}
+              />
+
+              <NumberInput
+                label="Thickness (mm)"
+                value={bristleThickness}
+                setValue={setBristleThickness}
+              />
+            </div>
+          </section>
+        </div>
+
+        <section className="rounded-xl border p-5 sm:p-6">
+          <h2 className="mb-4 text-xl font-semibold">Preview</h2>
+
+          <div className="flex min-h-48 items-center justify-center rounded-lg bg-gray-100 p-6">
+            <div
+              className="relative h-8 rounded bg-gray-700"
+              style={{ width: `${Math.min(stripLength * 3, 600)}px` }}
+            >
+              <div className="absolute bottom-full left-0 flex w-full justify-between">
+                {Array.from({
+                  length: Math.min(
+                    Math.floor(stripLength / bristleSpacing),
+                    100,
+                  ),
+                }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-px bg-gray-900"
+                    style={{
+                      height: `${Math.min(bristleLength * 3, 100)}px`,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <button
+          onClick={generateGCode}
+          className="w-full rounded-xl bg-black px-6 py-4 font-semibold text-white hover:bg-gray-800 sm:w-auto"
+        >
+          Generate G-code
+        </button>
+      </div>
+    </div>
   );
 }
