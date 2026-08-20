@@ -3,8 +3,9 @@ import Print3DPreview from "./Print3DPreview";
 
 const MAX_SIZE = 220;
 const STRIP_THICKNESS = 2;
+const MAX_BRISTLES = 500;
 
-type Values = {
+export type Values = {
   stripLength: string;
   stripWidth: string;
   bristleLength: string;
@@ -13,38 +14,42 @@ type Values = {
 };
 
 /*
- * Shared bristle geometry.
- *
- * Each returned value is the X position of the
- * LEFT edge of a physical bristle.
+ * Returns the X position of every bristle's LEFT edge.
  *
  * A bristle occupies:
  *
  *   x -> x + bristleThickness
  *
- * Therefore the complete footprint must satisfy:
+ * Therefore a position is valid only when:
  *
  *   x + bristleThickness <= stripLength
+ *
+ * bristleSpacing controls the distance between starts.
  */
 export function getBristlePositions(
   stripLength: number,
   bristleSpacing: number,
   bristleThickness: number,
 ): number[] {
-  const length = Math.max(stripLength, 0);
-  const spacing = Math.max(bristleSpacing, 0.1);
-  const thickness = Math.max(bristleThickness, 0.1);
+  const length = Math.max(0, stripLength);
+  const spacing = Math.max(0.1, bristleSpacing);
+  const thickness = Math.max(0.1, bristleThickness);
 
   if (length < thickness) {
     return [];
   }
 
-  const count = Math.floor((length - thickness) / spacing) + 1;
+  const positions: number[] = [];
 
-  return Array.from(
-    { length: Math.min(count, 500) },
-    (_, index) => index * spacing,
-  );
+  for (
+    let x = 0;
+    x + thickness <= length && positions.length < MAX_BRISTLES;
+    x += spacing
+  ) {
+    positions.push(x);
+  }
+
+  return positions;
 }
 
 function NumberInput({
@@ -114,8 +119,10 @@ export default function Print3D() {
   const bristleThickness = Math.max(number("bristleThickness"), 0.1);
 
   /*
-   * ONE calculation used by both the preview
-   * and G-code generation.
+   * Calculate the physical bristle positions once for
+   * this render.
+   *
+   * This same array is used by the preview AND G-code.
    */
   const bristlePositions = getBristlePositions(
     stripLength,
@@ -157,19 +164,18 @@ export default function Print3D() {
 
     for (const x of bristlePositions) {
       /*
-       * x is the LEFT edge of the bristle.
-       *
-       * Its physical X footprint is:
+       * The complete physical X footprint is:
        *
        * x -> x + bristleThickness
        *
-       * getBristlePositions() guarantees that the
-       * right edge never exceeds stripLength.
+       * The shared placement function guarantees
+       * that the right edge is <= stripLength.
        */
 
       lines.push(`G0 X${x.toFixed(3)} Y${STRIP_THICKNESS.toFixed(3)} Z0`);
 
       e += 0.08;
+
       lines.push(`G1 E${e.toFixed(4)}`);
 
       lines.push(
@@ -179,6 +185,7 @@ export default function Print3D() {
       );
 
       e -= 0.05;
+
       lines.push(`G1 E${e.toFixed(4)}`);
     }
 
@@ -193,7 +200,10 @@ export default function Print3D() {
 
     link.href = url;
     link.download = "bristle-strip.gcode";
+
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
 
     URL.revokeObjectURL(url);
   }
