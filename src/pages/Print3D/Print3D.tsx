@@ -1,14 +1,52 @@
 import { useState } from "react";
 
+function NumberInput({ label, name, values, update }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium text-gray-900">
+        {label}
+      </span>
+
+      <input
+        type="number"
+        value={values[name]}
+        min="0"
+        step="0.1"
+        onChange={(e) => update(name, e.target.value)}
+        className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:border-gray-500 focus:outline-none"
+      />
+    </label>
+  );
+}
+
 export default function Print3D() {
-  const [stripLength, setStripLength] = useState(100);
-  const [stripWidth, setStripWidth] = useState(10);
-  const [stripThickness, setStripThickness] = useState(1);
-  const [bristleLength, setBristleLength] = useState(20);
-  const [bristleSpacing, setBristleSpacing] = useState(1);
-  const [bristleThickness, setBristleThickness] = useState(0.4);
+  const [values, setValues] = useState({
+    stripLength: "100",
+    stripWidth: "10",
+    stripThickness: "1",
+    bristleLength: "20",
+    bristleSpacing: "1",
+    bristleThickness: "0.4",
+  });
+
+  function update(name, value) {
+    setValues((current) => ({
+      ...current,
+      [name]: value,
+    }));
+  }
+
+  function number(name) {
+    return Number(values[name]) || 0;
+  }
 
   function generateGCode() {
+    const stripLength = number("stripLength");
+    const stripWidth = number("stripWidth");
+    const stripThickness = number("stripThickness");
+    const bristleLength = number("bristleLength");
+    const bristleSpacing = Math.max(number("bristleSpacing"), 0.1);
+
     const lines = [
       "; 3D BRISTLE GENERATOR",
       `; Strip: ${stripLength} x ${stripWidth} x ${stripThickness} mm`,
@@ -65,26 +103,16 @@ export default function Print3D() {
     URL.revokeObjectURL(url);
   }
 
-  const NumberInput = ({ label, value, setValue }) => (
-    <label className="block">
-      <span className="mb-2 block text-sm font-medium">{label}</span>
-
-      <input
-        type="number"
-        value={value}
-        min="0"
-        step="0.1"
-        onChange={(e) => setValue(Number(e.target.value))}
-        className="w-full rounded border px-3 py-2"
-      />
-    </label>
+  const bristleCount = Math.min(
+    Math.floor(number("stripLength") / number("bristleSpacing")),
+    100,
   );
 
   return (
     <div className="min-h-screen px-4 py-6 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-7xl space-y-8">
         <header>
-          <h1 className="text-3xl font-bold sm:text-4xl">
+          <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">
             3D Printed Bristle Generator
           </h1>
 
@@ -94,75 +122,77 @@ export default function Print3D() {
         </header>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <section className="rounded-xl border p-5 sm:p-6">
-            <h2 className="mb-6 text-xl font-semibold">Strip</h2>
+          <section className="rounded-xl border border-gray-200 bg-white p-5 sm:p-6">
+            <h2 className="mb-6 text-xl font-semibold text-gray-900">Strip</h2>
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <NumberInput
                 label="Length (mm)"
-                value={stripLength}
-                setValue={setStripLength}
+                name="stripLength"
+                values={values}
+                update={update}
               />
 
               <NumberInput
                 label="Width (mm)"
-                value={stripWidth}
-                setValue={setStripWidth}
+                name="stripWidth"
+                values={values}
+                update={update}
               />
 
               <NumberInput
                 label="Thickness (mm)"
-                value={stripThickness}
-                setValue={setStripThickness}
+                name="stripThickness"
+                values={values}
+                update={update}
               />
             </div>
           </section>
 
-          <section className="rounded-xl border p-5 sm:p-6">
-            <h2 className="mb-6 text-xl font-semibold">Bristles</h2>
+          <section className="rounded-xl border border-gray-200 bg-white p-5 sm:p-6">
+            <h2 className="mb-6 text-xl font-semibold text-gray-900">
+              Bristles
+            </h2>
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <NumberInput
                 label="Length (mm)"
-                value={bristleLength}
-                setValue={setBristleLength}
+                name="bristleLength"
+                values={values}
+                update={update}
               />
 
               <NumberInput
                 label="Spacing (mm)"
-                value={bristleSpacing}
-                setValue={setBristleSpacing}
+                name="bristleSpacing"
+                values={values}
+                update={update}
               />
 
               <NumberInput
                 label="Thickness (mm)"
-                value={bristleThickness}
-                setValue={setBristleThickness}
+                name="bristleThickness"
+                values={values}
+                update={update}
               />
             </div>
           </section>
         </div>
 
-        <section className="rounded-xl border p-5 sm:p-6">
-          <h2 className="mb-4 text-xl font-semibold">Preview</h2>
+        <section className="rounded-xl border border-gray-200 bg-white p-5 sm:p-6">
+          <h2 className="mb-4 text-xl font-semibold text-gray-900">Preview</h2>
 
-          <div className="flex min-h-48 items-center justify-center rounded-lg bg-gray-100 p-6">
-            <div
-              className="relative h-8 rounded bg-gray-700"
-              style={{ width: `${Math.min(stripLength * 3, 600)}px` }}
-            >
+          <div className="flex min-h-48 items-center justify-center overflow-hidden rounded-lg bg-gray-100 p-6">
+            <div className="relative h-8 w-full max-w-2xl rounded bg-gray-700">
               <div className="absolute bottom-full left-0 flex w-full justify-between">
                 {Array.from({
-                  length: Math.min(
-                    Math.floor(stripLength / bristleSpacing),
-                    100,
-                  ),
+                  length: bristleCount,
                 }).map((_, i) => (
                   <div
                     key={i}
                     className="w-px bg-gray-900"
                     style={{
-                      height: `${Math.min(bristleLength * 3, 100)}px`,
+                      height: `${Math.min(number("bristleLength") * 3, 100)}px`,
                     }}
                   />
                 ))}
