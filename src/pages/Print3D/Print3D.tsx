@@ -1,43 +1,23 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Print3DPreview from "./Print3DPreview";
+import {
+  buildAllBristles,
+  StripParams,
+  BristleParams,
+} from "./bristleGeometry";
+import { generateGCode, downloadGCode } from "./generateGCode";
 
 const MAX_SIZE = 220;
-const MAX_BRISTLES = 500;
 
 type Values = {
   stripLength: string;
   stripWidth: string;
   stripThickness: string;
   bristleLength: string;
-  bristleSpacing: string;
+  bristleSpacingX: string;
+  bristleSpacingY: string;
   bristleThickness: string;
 };
-
-function getBristlePositions(
-  stripLength: number,
-  bristleSpacing: number,
-  bristleThickness: number,
-): number[] {
-  const length = Math.max(0, stripLength);
-  const spacing = Math.max(0.1, bristleSpacing);
-  const thickness = Math.max(0.1, bristleThickness);
-
-  if (length < thickness) {
-    return [];
-  }
-
-  const positions: number[] = [];
-
-  for (
-    let x = 0;
-    x + thickness <= length && positions.length < MAX_BRISTLES;
-    x += spacing
-  ) {
-    positions.push(x);
-  }
-
-  return positions;
-}
 
 function NumberInput({
   label,
@@ -77,7 +57,8 @@ export default function Print3D() {
     stripWidth: "10",
     stripThickness: "2",
     bristleLength: "20",
-    bristleSpacing: "2",
+    bristleSpacingX: "2",
+    bristleSpacingY: "2",
     bristleThickness: "0.4",
   });
 
@@ -96,103 +77,38 @@ export default function Print3D() {
     return Number(values[name]) || 0;
   }
 
-  const stripLength = Math.min(number("stripLength"), MAX_SIZE);
+  const strip: StripParams = {
+    stripLength: Math.min(number("stripLength"), MAX_SIZE),
+    stripWidth: Math.min(number("stripWidth"), MAX_SIZE),
+    stripThickness: Math.max(number("stripThickness"), 0.1),
+  };
 
-  const stripWidth = Math.min(number("stripWidth"), MAX_SIZE);
+  const bristleParams: BristleParams = {
+    bristleLength: Math.max(number("bristleLength"), 0.5),
+    bristleSpacingX: Math.max(number("bristleSpacingX"), 0.1),
+    bristleSpacingY: Math.max(number("bristleSpacingY"), 0.1),
+    bristleThickness: Math.max(number("bristleThickness"), 0.1),
+  };
 
-  const stripThickness = Math.max(number("stripThickness"), 0.1);
-
-  const bristleLength = number("bristleLength");
-
-  const bristleSpacing = Math.max(number("bristleSpacing"), 0.1);
-
-  const bristleThickness = Math.max(number("bristleThickness"), 0.1);
-
-  /*
-   * Single source of truth for physical X placement.
-   */
-  const bristlePositions = getBristlePositions(
-    stripLength,
-    bristleSpacing,
-    bristleThickness,
+  // Single source of truth: both the preview and the G-code
+  // generator are built from this same call, so they cannot
+  // disagree about bristle placement or shape.
+  const bristles = useMemo(
+    () => buildAllBristles(strip, bristleParams),
+    [
+      strip.stripLength,
+      strip.stripWidth,
+      strip.stripThickness,
+      bristleParams.bristleLength,
+      bristleParams.bristleSpacingX,
+      bristleParams.bristleSpacingY,
+      bristleParams.bristleThickness,
+    ],
   );
 
-  function generateGCode() {
-    const lines: string[] = [
-      "; 3D BRISTLE GENERATOR",
-      "",
-      `; X = strip length: ${stripLength} mm`,
-      `; Y = strip thickness: ${stripThickness} mm`,
-      `; Z = strip width: ${stripWidth} mm`,
-      `; Bristle length: ${bristleLength} mm`,
-      `; Bristle spacing: ${bristleSpacing} mm`,
-      `; Bristle thickness: ${bristleThickness} mm`,
-      `; Bristle count: ${bristlePositions.length}`,
-      "",
-      "G21",
-      "G90",
-      "M82",
-      "G28",
-      "",
-      "M104 S215",
-      "M109 S215",
-      "G92 E0",
-      "",
-      "; BASE STRIP",
-      "",
-      "G0 X0 Y0 Z0.2",
-      `G1 X${stripLength.toFixed(3)} E${(stripLength * 0.04).toFixed(4)}`,
-      "",
-      "; BRISTLES",
-      "",
-    ];
-
-    let e = stripLength * 0.08;
-
-    for (const x of bristlePositions) {
-      /*
-       * Bristle footprint:
-       *
-       * X = x -> x + bristleThickness
-       *
-       * getBristlePositions() guarantees the
-       * complete footprint fits inside the strip.
-       */
-
-      lines.push(`G0 X${x.toFixed(3)} Y${stripThickness.toFixed(3)} Z0`);
-
-      e += 0.08;
-
-      lines.push(`G1 E${e.toFixed(4)}`);
-
-      lines.push(
-        `G0 X${(x + bristleThickness).toFixed(3)} Y${(
-          stripThickness + bristleLength
-        ).toFixed(3)} Z0`,
-      );
-
-      e -= 0.05;
-
-      lines.push(`G1 E${e.toFixed(4)}`);
-    }
-
-    lines.push("", "M104 S0", "M140 S0", "G28 X0", "M84");
-
-    const blob = new Blob([lines.join("\n")], {
-      type: "text/plain",
-    });
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download = "bristle-strip.gcode";
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    URL.revokeObjectURL(url);
+  function handleGenerateGCode() {
+    const gcode = generateGCode({ strip, bristles: bristleParams });
+    downloadGCode(gcode);
   }
 
   return (
@@ -204,7 +120,7 @@ export default function Print3D() {
           </h1>
 
           <p className="mt-2 text-sm text-gray-600">
-            Design a strip with sideways-extruded bristles.
+            Design a strip with upward-leaning, densely tiled bristles.
           </p>
         </header>
 
@@ -222,7 +138,7 @@ export default function Print3D() {
               />
 
               <NumberInput
-                label="Width (Z) — mm"
+                label="Width (Y) — mm"
                 name="stripWidth"
                 values={values}
                 update={update}
@@ -230,7 +146,7 @@ export default function Print3D() {
               />
 
               <NumberInput
-                label="Thickness (Y) — mm"
+                label="Thickness (Z) — mm"
                 name="stripThickness"
                 values={values}
                 update={update}
@@ -245,15 +161,8 @@ export default function Print3D() {
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <NumberInput
-                label="Length (Y) — mm"
+                label="Length — mm"
                 name="bristleLength"
-                values={values}
-                update={update}
-              />
-
-              <NumberInput
-                label="Spacing (X) — mm"
-                name="bristleSpacing"
                 values={values}
                 update={update}
               />
@@ -264,22 +173,39 @@ export default function Print3D() {
                 values={values}
                 update={update}
               />
+
+              <NumberInput
+                label="Spacing X — mm"
+                name="bristleSpacingX"
+                values={values}
+                update={update}
+              />
+
+              <NumberInput
+                label="Spacing Y — mm"
+                name="bristleSpacingY"
+                values={values}
+                update={update}
+              />
             </div>
+
+            <p className="mt-4 text-xs text-gray-500">
+              Bristles lean away from vertical as needed, but the tool
+              automatically limits the lean angle so neighboring bristles never
+              collide — tight spacing produces straighter, denser bristles; wide
+              spacing allows more dramatic lean.
+            </p>
           </section>
         </div>
 
         <Print3DPreview
-          stripLength={stripLength}
-          stripWidth={stripWidth}
-          stripThickness={stripThickness}
-          bristleLength={bristleLength}
-          bristleSpacing={bristleSpacing}
-          bristleThickness={bristleThickness}
-          bristlePositions={bristlePositions}
+          strip={strip}
+          bristles={bristles}
+          bristleThickness={bristleParams.bristleThickness}
         />
 
         <button
-          onClick={generateGCode}
+          onClick={handleGenerateGCode}
           className="w-full rounded-xl bg-black px-6 py-4 font-semibold text-white hover:bg-gray-800 sm:w-auto"
         >
           Generate G-code

@@ -1,11 +1,9 @@
+import { Bristle, StripParams } from "./bristleGeometry";
+
 interface Print3DPreviewProps {
-  stripLength: number;
-  stripWidth: number;
-  stripThickness: number;
-  bristleLength: number;
-  bristleSpacing: number;
+  strip: StripParams;
+  bristles: Bristle[];
   bristleThickness: number;
-  bristlePositions: number[];
 }
 
 function ViewBox({
@@ -42,189 +40,151 @@ function Dimension({
   );
 }
 
+/**
+ * Renders a bristle's real path (from the shared geometry module)
+ * as an SVG polyline, projected onto the requested plane.
+ *
+ * plane "top"  -> project (X, Y), viewed from above
+ * plane "side" -> project (X, Z), viewed from the side
+ */
+function pathToSvgPoints(
+  bristle: Bristle,
+  plane: "top" | "side",
+  scale: number,
+  originX: number,
+  originY: number,
+): string {
+  return bristle.path
+    .map((p) => {
+      const px = plane === "top" ? p.x : p.x;
+      const py = plane === "top" ? p.y : p.z;
+      return `${(originX + px * scale).toFixed(2)},${(
+        originY -
+        py * scale
+      ).toFixed(2)}`;
+    })
+    .join(" ");
+}
+
 export default function Print3DPreview({
-  stripLength,
-  stripWidth,
-  stripThickness,
-  bristleLength,
-  bristleSpacing,
+  strip,
+  bristles,
   bristleThickness,
-  bristlePositions,
 }: Print3DPreviewProps) {
-  /*
-   * AXES
-   *
-   * X = strip length
-   * Y = strip thickness / bristle direction
-   * Z = strip width
-   *
-   * TOP:
-   * X × Y
-   *
-   * SIDE:
-   * Y × Z
-   */
-
-  const bristleCount = bristlePositions.length;
-
-  /*
-   * TOP VIEW
-   */
-
-  const topScale = 3;
-
-  const topLengthPx = Math.max(150, Math.min(700, stripLength * topScale));
-
-  const topThicknessPx = Math.max(1, stripThickness * topScale);
-
-  const topBristleLengthPx = Math.max(
-    30,
-    Math.min(400, bristleLength * topScale),
+  const bristleCount = bristles.length;
+  const maxTipZ = bristles.reduce(
+    (max, b) => Math.max(max, b.path[b.path.length - 1]?.z ?? 0),
+    strip.stripThickness,
   );
 
-  /*
-   * SIDE VIEW
-   */
+  // Both views share one scale function so they stay visually
+  // consistent (e.g. bristle thickness reads the same in both).
+  // Clamped so very short or very long strips still render at a
+  // sane pixel size instead of collapsing to ~0px or overflowing.
+  const computeScale = (spanMm: number) =>
+    Math.max(1, Math.min(6, 600 / Math.max(spanMm, 1)));
 
-  const sideScale = 4;
+  // ---- TOP VIEW: looking down the Z axis, plotting X vs Y ----
+  const topScale = computeScale(strip.stripLength);
+  const topSvgWidth = strip.stripLength * topScale + 20;
+  const topSvgHeight = strip.stripWidth * topScale + 20;
 
-  const sideWidthPx = Math.max(30, Math.min(500, stripWidth * sideScale));
-
-  const sideThicknessPx = Math.max(1, stripThickness * sideScale);
-
-  const sideBristleLengthPx = Math.max(
-    30,
-    Math.min(400, bristleLength * sideScale),
-  );
-
-  /*
-   * SIDE-VIEW BRISTLE COUNT
-   *
-   * Representative Z spacing:
-   *
-   * bristle thickness + bristle spacing
-   *
-   * Therefore:
-   *
-   * floor(
-   *   stripWidth /
-   *   (bristleThickness + bristleSpacing)
-   * )
-   */
-
-  const sideBristlePitch = bristleThickness + bristleSpacing;
-
-  const sideBristleCount =
-    sideBristlePitch > 0 ? Math.floor(stripWidth / sideBristlePitch) : 0;
+  // ---- SIDE VIEW: looking down the Y axis, plotting X vs Z ----
+  const sideScale = computeScale(strip.stripLength);
+  const sideSvgWidth = strip.stripLength * sideScale + 20;
+  const sideSvgHeight = maxTipZ * sideScale + 20;
 
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Preview</h2>
 
-        <p className="mt-1 text-sm text-gray-500">Top: X × Y · Side: Y × Z</p>
+        <p className="mt-1 text-sm text-gray-500">
+          Rendered directly from the same geometry used to generate G-code.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        {/* TOP VIEW */}
-
-        <ViewBox title="Top view — X × Y">
-          <div
-            className="relative shrink-0"
-            style={{
-              width: `${topLengthPx}px`,
-              height: `${topBristleLengthPx + topThicknessPx}px`,
-            }}
+        {/* TOP VIEW: X (length) x Y (width), looking down */}
+        <ViewBox title="Top view — looking down (X × Y)">
+          <svg
+            width={topSvgWidth}
+            height={topSvgHeight}
+            viewBox={`0 0 ${topSvgWidth} ${topSvgHeight}`}
           >
-            {bristlePositions.map((x, index) => (
-              <div
-                key={index}
-                className="absolute bg-gray-900"
-                style={{
-                  left: `${x * topScale}px`,
-                  bottom: `${topThicknessPx}px`,
-                  width: `${Math.max(1, bristleThickness * topScale)}px`,
-                  height: `${topBristleLengthPx}px`,
-                }}
+            {/* strip outline */}
+            <rect
+              x={10}
+              y={10}
+              width={strip.stripLength * topScale}
+              height={strip.stripWidth * topScale}
+              fill="#d1d5db"
+              stroke="#374151"
+              strokeWidth={2}
+            />
+
+            {/* bristle footprints, viewed from above — radius
+                reflects actual bristle thickness at this scale */}
+            {bristles.map((b, i) => (
+              <circle
+                key={i}
+                cx={10 + b.base.x * topScale}
+                cy={10 + b.base.y * topScale}
+                r={Math.max(0.75, (bristleThickness / 2) * topScale)}
+                fill="#111827"
               />
             ))}
-
-            {/* STRIP BASE */}
-
-            <div
-              className="absolute bottom-0 left-0 w-full rounded border-2 border-gray-700 bg-gray-400"
-              style={{
-                height: `${topThicknessPx}px`,
-              }}
-            />
-          </div>
+          </svg>
         </ViewBox>
 
-        {/* SIDE VIEW */}
-
-        <ViewBox title="Side view — Y × Z">
-          <div
-            className="relative shrink-0"
-            style={{
-              width: `${sideThicknessPx + sideBristleLengthPx}px`,
-              height: `${sideWidthPx}px`,
-            }}
+        {/* SIDE VIEW: X (length) x Z (height), looking from the side */}
+        <ViewBox title="Side view — looking from the side (X × Z)">
+          <svg
+            width={sideSvgWidth}
+            height={sideSvgHeight}
+            viewBox={`0 0 ${sideSvgWidth} ${sideSvgHeight}`}
           >
-            {/* STRIP BASE */}
-
-            <div
-              className="absolute left-0 top-0 rounded border-2 border-gray-700 bg-gray-400"
-              style={{
-                width: `${sideThicknessPx}px`,
-                height: `${sideWidthPx}px`,
-              }}
+            {/* strip base (drawn from the bottom, since Z=0 is the bed) */}
+            <rect
+              x={10}
+              y={sideSvgHeight - 10 - strip.stripThickness * sideScale}
+              width={strip.stripLength * sideScale}
+              height={strip.stripThickness * sideScale}
+              fill="#d1d5db"
+              stroke="#374151"
+              strokeWidth={2}
             />
 
-            {/* BRISTLES */}
-
-            <div
-              className="absolute top-0"
-              style={{
-                left: `${sideThicknessPx}px`,
-                width: `${sideBristleLengthPx}px`,
-                height: `${sideWidthPx}px`,
-              }}
-            >
-              {Array.from({
-                length: sideBristleCount,
-              }).map((_, index) => {
-                const z = index * sideBristlePitch;
-
-                return (
-                  <div
-                    key={index}
-                    className="absolute left-0 bg-gray-900"
-                    style={{
-                      top: `${z * sideScale}px`,
-                      width: `${sideBristleLengthPx}px`,
-                      height: `${Math.max(1, bristleThickness * sideScale)}px`,
-                    }}
-                  />
-                );
-              })}
-            </div>
-          </div>
+            {/* actual bristle paths, exactly as they'll be printed */}
+            {bristles.map((b, i) => (
+              <polyline
+                key={i}
+                points={pathToSvgPoints(
+                  b,
+                  "side",
+                  sideScale,
+                  10,
+                  sideSvgHeight - 10,
+                )}
+                fill="none"
+                stroke="#111827"
+                strokeWidth={Math.max(1, 0.4 * sideScale * 0.6)}
+                strokeLinecap="round"
+              />
+            ))}
+          </svg>
         </ViewBox>
       </div>
 
       {/* DIMENSIONS */}
-
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-6">
-        <Dimension label="Length (X)" value={`${stripLength} mm`} />
-
-        <Dimension label="Width (Z)" value={`${stripWidth} mm`} />
-
-        <Dimension label="Thickness (Y)" value={`${stripThickness} mm`} />
-
-        <Dimension label="Bristle length (Y)" value={`${bristleLength} mm`} />
-
-        <Dimension label="Bristle thickness" value={`${bristleThickness} mm`} />
-
+        <Dimension label="Length (X)" value={`${strip.stripLength} mm`} />
+        <Dimension label="Width (Y)" value={`${strip.stripWidth} mm`} />
+        <Dimension label="Thickness (Z)" value={`${strip.stripThickness} mm`} />
+        <Dimension
+          label="Max bristle height"
+          value={`${(maxTipZ - strip.stripThickness).toFixed(1)} mm`}
+        />
         <Dimension label="Bristles" value={bristleCount} />
       </div>
     </section>
