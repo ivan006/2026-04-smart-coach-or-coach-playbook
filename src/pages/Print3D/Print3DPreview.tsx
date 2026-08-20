@@ -61,12 +61,10 @@ export default function Print3DPreview({
    * Z = strip width
    *
    * TOP VIEW:
-   * Looking along Z
-   * Shows X × Y
+   * X × Y
    *
    * SIDE VIEW:
-   * Looking along X
-   * Shows Y × Z
+   * Y × Z
    */
 
   const bristleCount = bristlePositions.length;
@@ -74,7 +72,6 @@ export default function Print3DPreview({
   /*
    * ============================================
    * TOP VIEW
-   * X × Y
    * ============================================
    */
 
@@ -92,8 +89,18 @@ export default function Print3DPreview({
   /*
    * ============================================
    * SIDE VIEW
-   * Y × Z
    * ============================================
+   *
+   * The side view is a representative
+   * cross-section.
+   *
+   * Calculate the number of visible bristles
+   * from:
+   *
+   * strip width /
+   * (bristle thickness + bristle spacing)
+   *
+   * This makes spacing visible in the side view.
    */
 
   const sideScale = 4;
@@ -107,39 +114,10 @@ export default function Print3DPreview({
     Math.min(400, bristleLength * sideScale),
   );
 
-  /*
-   * The side view looks along X.
-   *
-   * Therefore all bristles overlap in this
-   * projection.
-   *
-   * Their X spacing does NOT create Z spacing.
-   *
-   * Instead, the actual X positions determine
-   * how much of the projected bristle field
-   * exists across the X direction.
-   *
-   * We calculate the occupied X envelope from
-   * the same physical positions used above.
-   */
-
-  const projectedBristleCoverage =
-    bristlePositions.length > 0
-      ? Math.min(
-          stripLength,
-          bristlePositions[bristlePositions.length - 1] + bristleThickness,
-        )
+  const sideBristleCount =
+    bristleThickness + bristleSpacing > 0
+      ? Math.floor(stripWidth / (bristleThickness + bristleSpacing))
       : 0;
-
-  /*
-   * Fraction of the X strip occupied by actual
-   * bristle footprints.
-   *
-   * This lets the side-view projection reflect
-   * spacing rather than inventing Z rows.
-   */
-  const bristleCoverageRatio =
-    stripLength > 0 ? projectedBristleCoverage / stripLength : 0;
 
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
@@ -198,7 +176,7 @@ export default function Print3DPreview({
               height: `${sideWidthPx}px`,
             }}
           >
-            {/* BASE */}
+            {/* STRIP BASE */}
 
             <div
               className="absolute left-0 top-0 rounded border-2 border-gray-700 bg-gray-400"
@@ -208,7 +186,7 @@ export default function Print3DPreview({
               }}
             />
 
-            {/* BRISTLE PROJECTION */}
+            {/* BRISTLE FIELD */}
 
             <div
               className="absolute top-0"
@@ -218,18 +196,27 @@ export default function Print3DPreview({
                 height: `${sideWidthPx}px`,
               }}
             >
-              {bristlePositions.length > 0 && (
-                <div
-                  className="absolute left-0 top-0 bg-gray-900"
-                  style={{
-                    width: `${sideBristleLengthPx}px`,
-                    height: `${Math.max(
-                      1,
-                      sideWidthPx * bristleCoverageRatio,
-                    )}px`,
-                  }}
-                />
-              )}
+              {Array.from({
+                length: sideBristleCount,
+              }).map((_, index) => {
+                const cellSize = bristleThickness + bristleSpacing;
+
+                const z = index * cellSize;
+
+                const zPx = z * sideScale;
+
+                return (
+                  <div
+                    key={index}
+                    className="absolute left-0 bg-gray-900"
+                    style={{
+                      top: `${zPx}px`,
+                      width: `${sideBristleLengthPx}px`,
+                      height: `${Math.max(1, bristleThickness * sideScale)}px`,
+                    }}
+                  />
+                );
+              })}
             </div>
           </div>
         </ViewBox>

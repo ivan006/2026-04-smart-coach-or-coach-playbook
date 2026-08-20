@@ -14,17 +14,18 @@ export type Values = {
 };
 
 /*
- * X positions of the LEFT edge of each physical bristle.
+ * Calculates the actual physical X positions of bristles.
  *
- * Every bristle occupies:
+ * Each bristle occupies:
  *
- *   X = x -> x + bristleThickness
+ *   x -> x + bristleThickness
  *
- * Therefore:
+ * A bristle is valid only when its COMPLETE
+ * physical footprint fits inside the strip:
  *
  *   x + bristleThickness <= stripLength
  *
- * must always be true.
+ * bristleSpacing is the distance between bristle starts.
  */
 export function getBristlePositions(
   stripLength: number,
@@ -119,10 +120,7 @@ export default function Print3D() {
   const bristleThickness = Math.max(number("bristleThickness"), 0.1);
 
   /*
-   * SINGLE SOURCE OF TRUTH.
-   *
-   * Preview and G-code receive these exact
-   * physical X positions.
+   * SINGLE SOURCE OF TRUTH FOR ACTUAL X PLACEMENT.
    */
   const bristlePositions = getBristlePositions(
     stripLength,
@@ -163,9 +161,21 @@ export default function Print3D() {
     let e = stripLength * 0.08;
 
     for (const x of bristlePositions) {
+      /*
+       * x = left edge of bristle.
+       *
+       * Complete X footprint:
+       *
+       * x -> x + bristleThickness
+       *
+       * getBristlePositions() guarantees this
+       * never extends beyond stripLength.
+       */
+
       lines.push(`G0 X${x.toFixed(3)} Y${STRIP_THICKNESS.toFixed(3)} Z0`);
 
       e += 0.08;
+
       lines.push(`G1 E${e.toFixed(4)}`);
 
       lines.push(
@@ -175,6 +185,7 @@ export default function Print3D() {
       );
 
       e -= 0.05;
+
       lines.push(`G1 E${e.toFixed(4)}`);
     }
 
