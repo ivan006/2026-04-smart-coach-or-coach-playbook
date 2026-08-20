@@ -1,3 +1,12 @@
+interface Print3DPreviewProps {
+  stripLength: number;
+  stripWidth: number;
+  stripThickness: number;
+  bristleLength: number;
+  bristleSpacing: number;
+  bristleThickness: number;
+}
+
 function ViewBox({
   title,
   children,
@@ -32,15 +41,6 @@ function Dimension({
   );
 }
 
-interface Print3DPreviewProps {
-  stripLength: number;
-  stripWidth: number;
-  stripThickness: number;
-  bristleLength: number;
-  bristleSpacing: number;
-  bristleThickness: number;
-}
-
 export default function Print3DPreview({
   stripLength,
   stripWidth,
@@ -54,51 +54,61 @@ export default function Print3DPreview({
   const bristleCount = Math.min(Math.floor(stripLength / safeSpacing) + 1, 500);
 
   /*
+   * ============================
    * TOP VIEW
+   * ============================
    *
-   * Looking down at the print bed.
+   * Looking DOWN the Z axis.
    *
-   *             BRISTLES
-   *                ↓
-   *   ─────────────────────────
-   *   ┌────────────────────────┐
-   *   │                        │
-   *   │         STRIP          │
-   *   │                        │
-   *   └────────────────────────┘
+   * X = horizontal
+   * Y = vertical
    *
-   * The bristles originate at the outer
-   * long edge of the strip.
+   * Therefore this view shows:
+   *
+   *       X = LENGTH
+   *
+   *   ┌──────────────────────┐
+   *   │                      │
+   *   └──────────────────────┘
+   *
+   *          Y = 2 mm
+   *
+   * Bristles extend in Y.
    */
 
   const topWidth = Math.min(650, Math.max(150, stripLength * 3));
 
-  const topHeight = Math.min(300, Math.max(30, stripWidth * 3));
+  const topStripHeight = Math.max(8, stripThickness * 8);
 
-  const topBristleLength = Math.max(20, Math.min(180, bristleLength * 3));
+  const topBristleHeight = Math.max(20, Math.min(180, bristleLength * 3));
 
   /*
+   * ============================
    * SIDE VIEW
+   * ============================
    *
-   * Looking along the width axis.
+   * Looking along Y.
    *
-   *             BRISTLE
-   *                ↑
-   *                │
-   *                │
-   *   ─────────────┼────────────
-   *   ┌────────────────────────┐
-   *   │       STRIP            │
-   *   └────────────────────────┘
+   * X = horizontal
+   * Z = vertical
    *
-   * Here we see length × thickness.
+   * Therefore this view shows:
+   *
+   *       X = LENGTH
+   *
+   *   ┌──────────────────────┐
+   *   │                      │
+   *   │       Z = WIDTH      │
+   *   │                      │
+   *   └──────────────────────┘
+   *
+   * Bristles aren't visible here
+   * because they project along Y.
    */
 
   const sideWidth = Math.min(650, Math.max(150, stripLength * 3));
 
-  const sideThickness = Math.max(8, stripThickness * 8);
-
-  const sideBristleHeight = Math.max(20, Math.min(180, bristleLength * 3));
+  const sideHeight = Math.min(400, Math.max(30, stripWidth * 3));
 
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
@@ -106,20 +116,19 @@ export default function Print3DPreview({
         <h2 className="text-xl font-semibold text-gray-900">Preview</h2>
 
         <p className="mt-1 text-sm text-gray-500">
-          Top view shows length × width. Side view shows length × thickness.
+          X = length · Y = thickness / bristle direction · Z = width
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        {/* TOP VIEW */}
+        {/* ================= TOP VIEW ================= */}
 
-        <ViewBox title="Top view — length × width">
+        <ViewBox title="Top view — X × Y">
           <div
             className="relative shrink-0"
             style={{
               width: `${topWidth}px`,
-              paddingTop: `${topBristleLength}px`,
-              paddingBottom: "8px",
+              paddingTop: `${topBristleHeight}px`,
             }}
           >
             {/* BRISTLES */}
@@ -127,7 +136,7 @@ export default function Print3DPreview({
             <div
               className="absolute left-0 top-0 flex w-full justify-between"
               style={{
-                height: `${topBristleLength}px`,
+                height: `${topBristleHeight}px`,
               }}
             >
               {Array.from({
@@ -147,68 +156,37 @@ export default function Print3DPreview({
             {/* STRIP */}
 
             <div
-              className="relative w-full rounded border-2 border-gray-700 bg-gray-300"
+              className="w-full rounded bg-gray-700"
               style={{
-                height: `${topHeight}px`,
+                height: `${topStripHeight}px`,
               }}
             />
           </div>
         </ViewBox>
 
-        {/* SIDE VIEW */}
+        {/* ================= SIDE VIEW ================= */}
 
-        <ViewBox title="Side view — length × thickness">
+        <ViewBox title="Side view — X × Z">
           <div
-            className="relative shrink-0"
+            className="relative shrink-0 rounded border-2 border-gray-700 bg-gray-300"
             style={{
               width: `${sideWidth}px`,
-              paddingTop: `${sideBristleHeight}px`,
+              height: `${sideHeight}px`,
             }}
-          >
-            {/* BRISTLES */}
-
-            <div
-              className="absolute left-0 top-0 flex w-full justify-between"
-              style={{
-                height: `${sideBristleHeight}px`,
-              }}
-            >
-              {Array.from({
-                length: bristleCount,
-              }).map((_, index) => (
-                <div
-                  key={index}
-                  className="bg-gray-900"
-                  style={{
-                    width: `${Math.max(1, bristleThickness)}px`,
-                    height: "100%",
-                  }}
-                />
-              ))}
-            </div>
-
-            {/* STRIP */}
-
-            <div
-              className="relative w-full rounded bg-gray-700"
-              style={{
-                height: `${sideThickness}px`,
-              }}
-            />
-          </div>
+          />
         </ViewBox>
       </div>
 
       {/* DIMENSIONS */}
 
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-5">
-        <Dimension label="Length" value={`${stripLength} mm`} />
+        <Dimension label="Length (X)" value={`${stripLength} mm`} />
 
-        <Dimension label="Width" value={`${stripWidth} mm`} />
+        <Dimension label="Width (Z)" value={`${stripWidth} mm`} />
 
-        <Dimension label="Thickness" value={`${stripThickness} mm`} />
+        <Dimension label="Thickness (Y)" value={`${stripThickness} mm`} />
 
-        <Dimension label="Bristle length" value={`${bristleLength} mm`} />
+        <Dimension label="Bristle length (Y)" value={`${bristleLength} mm`} />
 
         <Dimension label="Bristles" value={bristleCount} />
       </div>

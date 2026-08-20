@@ -2,9 +2,21 @@ import { useState } from "react";
 import Print3DPreview from "./Print3DPreview";
 
 const MAX_SIZE = 220;
-const STRIP_THICKNESS = 1;
+const STRIP_THICKNESS = 2;
 
-function NumberInput({ label, name, values, update, max }) {
+function NumberInput({
+  label,
+  name,
+  values,
+  update,
+  max,
+}: {
+  label: string;
+  name: string;
+  values: Record<string, string>;
+  update: (name: string, value: string, max?: number) => void;
+  max?: number;
+}) {
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-gray-900">
@@ -33,7 +45,7 @@ export default function Print3D() {
     bristleThickness: "0.4",
   });
 
-  function update(name, value, max) {
+  function update(name: string, value: string, max?: number) {
     if (value !== "" && max && Number(value) > max) {
       value = String(max);
     }
@@ -44,7 +56,7 @@ export default function Print3D() {
     }));
   }
 
-  function number(name) {
+  function number(name: string) {
     return Number(values[name]) || 0;
   }
 
@@ -57,58 +69,75 @@ export default function Print3D() {
 
     const bristleSpacing = Math.max(number("bristleSpacing"), 0.1);
 
+    const bristleThickness = Math.max(number("bristleThickness"), 0.1);
+
     const lines = [
       "; 3D BRISTLE GENERATOR",
-      `; Strip length: ${stripLength} mm`,
-      `; Strip width: ${stripWidth} mm`,
-      `; Strip thickness: ${STRIP_THICKNESS} mm`,
-      `; Bristle length: ${bristleLength} mm`,
-      `; Bristle spacing: ${bristleSpacing} mm`,
+      "",
+      `; X Strip Length: ${stripLength} mm`,
+      `; Z Strip Width: ${stripWidth} mm`,
+      `; Y Strip Thickness: ${STRIP_THICKNESS} mm`,
+      `; Bristle Length: ${bristleLength} mm`,
+      `; Bristle Spacing: ${bristleSpacing} mm`,
+      `; Bristle Thickness: ${bristleThickness} mm`,
       "",
       "G21 ; millimetres",
       "G90 ; absolute positioning",
       "M82 ; absolute extrusion",
-      "G28 ; home",
+      "G28",
+      "",
       "M104 S215",
       "M109 S215",
       "G92 E0",
       "",
       "; BASE STRIP",
-      "G0 Z0.2",
-      "G0 X0 Y0",
-      `G1 X${stripLength} Y0 E${stripLength * 0.04}`,
-      `G1 X${stripLength} Y${stripWidth} E${stripWidth * 0.04}`,
-      `G1 X0 Y${stripWidth} E${stripLength * 0.04}`,
-      `G1 X0 Y0 E${stripWidth * 0.04}`,
+      "; X = length",
+      "; Y = thickness",
+      "; Z = width",
+      "",
+      "G0 X0 Y0 Z0.2",
+      `G1 X${stripLength} E${(stripLength * 0.04).toFixed(4)}`,
       "",
       "; BRISTLES",
+      "; Bristles project in Y",
+      "",
     ];
 
     let e = stripLength * 0.08;
 
     for (let x = 0; x <= stripLength; x += bristleSpacing) {
-      lines.push(`G0 X${x.toFixed(3)} Y${stripWidth}`);
+      /*
+       * Start on the side of the strip.
+       *
+       * The strip occupies Y = 0 → 2 mm.
+       * Bristles begin at Y = 2 mm and
+       * extend outward in Y.
+       */
+
+      lines.push(`G0 X${x.toFixed(3)} Y${STRIP_THICKNESS} Z0`);
 
       e += 0.08;
+
       lines.push(`G1 E${e.toFixed(4)}`);
 
       lines.push(
-        `G0 X${x.toFixed(3)} Y${(stripWidth + bristleLength).toFixed(3)}`,
+        `G0 X${x.toFixed(3)} Y${(STRIP_THICKNESS + bristleLength).toFixed(
+          3,
+        )} Z0`,
       );
 
       e -= 0.05;
+
       lines.push(`G1 E${e.toFixed(4)}`);
     }
 
     lines.push("", "M104 S0", "M140 S0", "G28 X0", "M84");
 
-    const blob = new Blob([lines.join("\n")], {
-      type: "text/plain",
-    });
+    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
 
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
 
+    const link = document.createElement("a");
     link.href = url;
     link.download = "bristle-strip.gcode";
     link.click();
@@ -125,7 +154,7 @@ export default function Print3D() {
           </h1>
 
           <p className="mt-2 text-sm text-gray-600">
-            Design a strip with automatically generated sideways bristles.
+            Design a strip with sideways-extruded bristles.
           </p>
         </header>
 
@@ -137,7 +166,7 @@ export default function Print3D() {
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <NumberInput
-                label="Length (mm)"
+                label="Length (X) — mm"
                 name="stripLength"
                 values={values}
                 update={update}
@@ -145,7 +174,7 @@ export default function Print3D() {
               />
 
               <NumberInput
-                label="Width (mm)"
+                label="Width / Height (Z) — mm"
                 name="stripWidth"
                 values={values}
                 update={update}
@@ -163,7 +192,7 @@ export default function Print3D() {
               </div>
 
               <div>
-                Fixed thickness: <strong>{STRIP_THICKNESS} mm</strong>
+                Fixed thickness (Y): <strong>{STRIP_THICKNESS} mm</strong>
               </div>
             </div>
           </section>
@@ -177,21 +206,21 @@ export default function Print3D() {
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <NumberInput
-                label="Length (mm)"
+                label="Length (Y) — mm"
                 name="bristleLength"
                 values={values}
                 update={update}
               />
 
               <NumberInput
-                label="Spacing (mm)"
+                label="Spacing (X) — mm"
                 name="bristleSpacing"
                 values={values}
                 update={update}
               />
 
               <NumberInput
-                label="Thickness (mm)"
+                label="Thickness — mm"
                 name="bristleThickness"
                 values={values}
                 update={update}
@@ -199,8 +228,6 @@ export default function Print3D() {
             </div>
           </section>
         </div>
-
-        {/* PREVIEW COMPONENT */}
 
         <Print3DPreview
           stripLength={number("stripLength")}
@@ -210,8 +237,6 @@ export default function Print3D() {
           bristleSpacing={number("bristleSpacing")}
           bristleThickness={number("bristleThickness")}
         />
-
-        {/* GENERATE */}
 
         <button
           onClick={generateGCode}
