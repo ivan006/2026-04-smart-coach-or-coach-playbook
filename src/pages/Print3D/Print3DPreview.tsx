@@ -58,31 +58,40 @@ export default function Print3DPreview({
    *
    * Looking down at the print bed.
    *
-   *       STRIP LENGTH
-   *   ┌──────────────────────┐
-   *   │                      │
-   *   │                      │
-   *   │                      │ STRIP WIDTH
-   *   │                      │
-   *   └──────────────────────┘
+   *             BRISTLES
+   *                ↓
+   *   ─────────────────────────
+   *   ┌────────────────────────┐
+   *   │                        │
+   *   │         STRIP          │
+   *   │                        │
+   *   └────────────────────────┘
+   *
+   * The bristles originate at the outer
+   * long edge of the strip.
    */
 
   const topWidth = Math.min(650, Math.max(150, stripLength * 3));
 
   const topHeight = Math.min(300, Math.max(30, stripWidth * 3));
 
+  const topBristleLength = Math.max(20, Math.min(180, bristleLength * 3));
+
   /*
    * SIDE VIEW
    *
    * Looking along the width axis.
    *
-   *             BRISTLES
+   *             BRISTLE
    *                ↑
    *                │
-   *   ─────────────┼─────────────
-   *   ┌─────────────────────────┐
-   *   │       THICKNESS         │
-   *   └─────────────────────────┘
+   *                │
+   *   ─────────────┼────────────
+   *   ┌────────────────────────┐
+   *   │       STRIP            │
+   *   └────────────────────────┘
+   *
+   * Here we see length × thickness.
    */
 
   const sideWidth = Math.min(650, Math.max(150, stripLength * 3));
@@ -101,28 +110,48 @@ export default function Print3DPreview({
         </p>
       </div>
 
-      {/* VIEWS STACKED VERTICALLY */}
-
       <div className="grid grid-cols-1 gap-6">
         {/* TOP VIEW */}
 
         <ViewBox title="Top view — length × width">
           <div
-            className="relative shrink-0 rounded border-2 border-gray-700 bg-gray-300"
+            className="relative shrink-0"
             style={{
               width: `${topWidth}px`,
-              height: `${topHeight}px`,
+              paddingTop: `${topBristleLength}px`,
+              paddingBottom: "8px",
             }}
           >
-            {/* Bristle attachment positions */}
+            {/* BRISTLES */}
 
-            <div className="absolute bottom-0 left-0 flex w-full justify-between">
+            <div
+              className="absolute left-0 top-0 flex w-full justify-between"
+              style={{
+                height: `${topBristleLength}px`,
+              }}
+            >
               {Array.from({
                 length: bristleCount,
               }).map((_, index) => (
-                <div key={index} className="h-3 w-px bg-gray-900" />
+                <div
+                  key={index}
+                  className="bg-gray-900"
+                  style={{
+                    width: `${Math.max(1, bristleThickness)}px`,
+                    height: "100%",
+                  }}
+                />
               ))}
             </div>
+
+            {/* STRIP */}
+
+            <div
+              className="relative w-full rounded border-2 border-gray-700 bg-gray-300"
+              style={{
+                height: `${topHeight}px`,
+              }}
+            />
           </div>
         </ViewBox>
 
@@ -136,7 +165,7 @@ export default function Print3DPreview({
               paddingTop: `${sideBristleHeight}px`,
             }}
           >
-            {/* Bristles */}
+            {/* BRISTLES */}
 
             <div
               className="absolute left-0 top-0 flex w-full justify-between"
@@ -149,19 +178,19 @@ export default function Print3DPreview({
               }).map((_, index) => (
                 <div
                   key={index}
-                  className="w-px bg-gray-900"
+                  className="bg-gray-900"
                   style={{
+                    width: `${Math.max(1, bristleThickness)}px`,
                     height: "100%",
-                    minWidth: `${Math.max(1, bristleThickness)}px`,
                   }}
                 />
               ))}
             </div>
 
-            {/* Strip */}
+            {/* STRIP */}
 
             <div
-              className="w-full rounded bg-gray-700"
+              className="relative w-full rounded bg-gray-700"
               style={{
                 height: `${sideThickness}px`,
               }}
