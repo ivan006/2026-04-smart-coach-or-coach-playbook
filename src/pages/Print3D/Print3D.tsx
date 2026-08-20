@@ -1,6 +1,10 @@
 import { useState } from "react";
+import Print3DPreview from "./Print3DPreview";
 
-function NumberInput({ label, name, values, update }) {
+const MAX_SIZE = 220;
+const STRIP_THICKNESS = 1;
+
+function NumberInput({ label, name, values, update, max }) {
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-gray-900">
@@ -10,10 +14,11 @@ function NumberInput({ label, name, values, update }) {
       <input
         type="number"
         value={values[name]}
-        min="0"
+        min="0.1"
+        max={max}
         step="0.1"
-        onChange={(e) => update(name, e.target.value)}
-        className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:border-gray-500 focus:outline-none"
+        onChange={(e) => update(name, e.target.value, max)}
+        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400"
       />
     </label>
   );
@@ -23,13 +28,16 @@ export default function Print3D() {
   const [values, setValues] = useState({
     stripLength: "100",
     stripWidth: "10",
-    stripThickness: "1",
     bristleLength: "20",
-    bristleSpacing: "1",
+    bristleSpacing: "2",
     bristleThickness: "0.4",
   });
 
-  function update(name, value) {
+  function update(name, value, max) {
+    if (value !== "" && max && Number(value) > max) {
+      value = String(max);
+    }
+
     setValues((current) => ({
       ...current,
       [name]: value,
@@ -41,21 +49,26 @@ export default function Print3D() {
   }
 
   function generateGCode() {
-    const stripLength = number("stripLength");
-    const stripWidth = number("stripWidth");
-    const stripThickness = number("stripThickness");
+    const stripLength = Math.min(number("stripLength"), MAX_SIZE);
+
+    const stripWidth = Math.min(number("stripWidth"), MAX_SIZE);
+
     const bristleLength = number("bristleLength");
+
     const bristleSpacing = Math.max(number("bristleSpacing"), 0.1);
 
     const lines = [
       "; 3D BRISTLE GENERATOR",
-      `; Strip: ${stripLength} x ${stripWidth} x ${stripThickness} mm`,
-      `; Bristles: ${bristleLength} mm`,
+      `; Strip length: ${stripLength} mm`,
+      `; Strip width: ${stripWidth} mm`,
+      `; Strip thickness: ${STRIP_THICKNESS} mm`,
+      `; Bristle length: ${bristleLength} mm`,
+      `; Bristle spacing: ${bristleSpacing} mm`,
       "",
-      "G21",
-      "G90",
-      "M82",
-      "G28",
+      "G21 ; millimetres",
+      "G90 ; absolute positioning",
+      "M82 ; absolute extrusion",
+      "G28 ; home",
       "M104 S215",
       "M109 S215",
       "G92 E0",
@@ -103,13 +116,8 @@ export default function Print3D() {
     URL.revokeObjectURL(url);
   }
 
-  const bristleCount = Math.min(
-    Math.floor(number("stripLength") / number("bristleSpacing")),
-    100,
-  );
-
   return (
-    <div className="min-h-screen px-4 py-6 sm:px-6 lg:px-10">
+    <div className="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-7xl space-y-8">
         <header>
           <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">
@@ -117,12 +125,14 @@ export default function Print3D() {
           </h1>
 
           <p className="mt-2 text-sm text-gray-600">
-            Generate sideways-extruded bristles from a simple printed strip.
+            Design a strip with automatically generated sideways bristles.
           </p>
         </header>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <section className="rounded-xl border border-gray-200 bg-white p-5 sm:p-6">
+          {/* STRIP */}
+
+          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 className="mb-6 text-xl font-semibold text-gray-900">Strip</h2>
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -131,6 +141,7 @@ export default function Print3D() {
                 name="stripLength"
                 values={values}
                 update={update}
+                max={MAX_SIZE}
               />
 
               <NumberInput
@@ -138,18 +149,28 @@ export default function Print3D() {
                 name="stripWidth"
                 values={values}
                 update={update}
+                max={MAX_SIZE}
               />
+            </div>
 
-              <NumberInput
-                label="Thickness (mm)"
-                name="stripThickness"
-                values={values}
-                update={update}
-              />
+            <div className="mt-5 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
+              <div>
+                Maximum length: <strong>{MAX_SIZE} mm</strong>
+              </div>
+
+              <div>
+                Maximum width: <strong>{MAX_SIZE} mm</strong>
+              </div>
+
+              <div>
+                Fixed thickness: <strong>{STRIP_THICKNESS} mm</strong>
+              </div>
             </div>
           </section>
 
-          <section className="rounded-xl border border-gray-200 bg-white p-5 sm:p-6">
+          {/* BRISTLES */}
+
+          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 className="mb-6 text-xl font-semibold text-gray-900">
               Bristles
             </h2>
@@ -179,31 +200,22 @@ export default function Print3D() {
           </section>
         </div>
 
-        <section className="rounded-xl border border-gray-200 bg-white p-5 sm:p-6">
-          <h2 className="mb-4 text-xl font-semibold text-gray-900">Preview</h2>
+        {/* PREVIEW COMPONENT */}
 
-          <div className="flex min-h-48 items-center justify-center overflow-hidden rounded-lg bg-gray-100 p-6">
-            <div className="relative h-8 w-full max-w-2xl rounded bg-gray-700">
-              <div className="absolute bottom-full left-0 flex w-full justify-between">
-                {Array.from({
-                  length: bristleCount,
-                }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="w-px bg-gray-900"
-                    style={{
-                      height: `${Math.min(number("bristleLength") * 3, 100)}px`,
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
+        <Print3DPreview
+          stripLength={number("stripLength")}
+          stripWidth={number("stripWidth")}
+          stripThickness={STRIP_THICKNESS}
+          bristleLength={number("bristleLength")}
+          bristleSpacing={number("bristleSpacing")}
+          bristleThickness={number("bristleThickness")}
+        />
+
+        {/* GENERATE */}
 
         <button
           onClick={generateGCode}
-          className="w-full rounded-xl bg-black px-6 py-4 font-semibold text-white hover:bg-gray-800 sm:w-auto"
+          className="w-full rounded-xl bg-black px-6 py-4 font-semibold text-white transition hover:bg-gray-800 sm:w-auto"
         >
           Generate G-code
         </button>
