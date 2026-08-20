@@ -12,6 +12,41 @@ type Values = {
   bristleThickness: string;
 };
 
+/*
+ * Shared bristle geometry.
+ *
+ * Each returned value is the X position of the
+ * LEFT edge of a physical bristle.
+ *
+ * A bristle occupies:
+ *
+ *   x -> x + bristleThickness
+ *
+ * Therefore the complete footprint must satisfy:
+ *
+ *   x + bristleThickness <= stripLength
+ */
+export function getBristlePositions(
+  stripLength: number,
+  bristleSpacing: number,
+  bristleThickness: number,
+): number[] {
+  const length = Math.max(stripLength, 0);
+  const spacing = Math.max(bristleSpacing, 0.1);
+  const thickness = Math.max(bristleThickness, 0.1);
+
+  if (length < thickness) {
+    return [];
+  }
+
+  const count = Math.floor((length - thickness) / spacing) + 1;
+
+  return Array.from(
+    { length: Math.min(count, 500) },
+    (_, index) => index * spacing,
+  );
+}
+
 function NumberInput({
   label,
   name,
@@ -68,17 +103,27 @@ export default function Print3D() {
     return Number(values[name]) || 0;
   }
 
+  const stripLength = Math.min(number("stripLength"), MAX_SIZE);
+
+  const stripWidth = Math.min(number("stripWidth"), MAX_SIZE);
+
+  const bristleLength = number("bristleLength");
+
+  const bristleSpacing = Math.max(number("bristleSpacing"), 0.1);
+
+  const bristleThickness = Math.max(number("bristleThickness"), 0.1);
+
+  /*
+   * ONE calculation used by both the preview
+   * and G-code generation.
+   */
+  const bristlePositions = getBristlePositions(
+    stripLength,
+    bristleSpacing,
+    bristleThickness,
+  );
+
   function generateGCode() {
-    const stripLength = Math.min(number("stripLength"), MAX_SIZE);
-
-    const stripWidth = Math.min(number("stripWidth"), MAX_SIZE);
-
-    const bristleLength = number("bristleLength");
-
-    const bristleSpacing = Math.max(number("bristleSpacing"), 0.1);
-
-    const bristleThickness = Math.max(number("bristleThickness"), 0.1);
-
     const lines: string[] = [
       "; 3D BRISTLE GENERATOR",
       "",
@@ -88,6 +133,7 @@ export default function Print3D() {
       `; Bristle length: ${bristleLength} mm`,
       `; Bristle spacing: ${bristleSpacing} mm`,
       `; Bristle thickness: ${bristleThickness} mm`,
+      `; Bristle count: ${bristlePositions.length}`,
       "",
       "G21",
       "G90",
@@ -101,7 +147,7 @@ export default function Print3D() {
       "; BASE STRIP",
       "",
       "G0 X0 Y0 Z0.2",
-      `G1 X${stripLength} E${(stripLength * 0.04).toFixed(4)}`,
+      `G1 X${stripLength.toFixed(3)} E${(stripLength * 0.04).toFixed(4)}`,
       "",
       "; BRISTLES",
       "",
@@ -109,16 +155,27 @@ export default function Print3D() {
 
     let e = stripLength * 0.08;
 
-    for (let x = 0; x <= stripLength; x += bristleSpacing) {
-      lines.push(`G0 X${x.toFixed(3)} Y${STRIP_THICKNESS} Z0`);
+    for (const x of bristlePositions) {
+      /*
+       * x is the LEFT edge of the bristle.
+       *
+       * Its physical X footprint is:
+       *
+       * x -> x + bristleThickness
+       *
+       * getBristlePositions() guarantees that the
+       * right edge never exceeds stripLength.
+       */
+
+      lines.push(`G0 X${x.toFixed(3)} Y${STRIP_THICKNESS.toFixed(3)} Z0`);
 
       e += 0.08;
       lines.push(`G1 E${e.toFixed(4)}`);
 
       lines.push(
-        `G0 X${x.toFixed(3)} Y${(STRIP_THICKNESS + bristleLength).toFixed(
-          3,
-        )} Z0`,
+        `G0 X${(x + bristleThickness).toFixed(3)} Y${(
+          STRIP_THICKNESS + bristleLength
+        ).toFixed(3)} Z0`,
       );
 
       e -= 0.05;
@@ -127,7 +184,9 @@ export default function Print3D() {
 
     lines.push("", "M104 S0", "M140 S0", "G28 X0", "M84");
 
-    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+    const blob = new Blob([lines.join("\n")], {
+      type: "text/plain",
+    });
 
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -210,12 +269,13 @@ export default function Print3D() {
         </div>
 
         <Print3DPreview
-          stripLength={number("stripLength")}
-          stripWidth={number("stripWidth")}
+          stripLength={stripLength}
+          stripWidth={stripWidth}
           stripThickness={STRIP_THICKNESS}
-          bristleLength={number("bristleLength")}
-          bristleSpacing={number("bristleSpacing")}
-          bristleThickness={number("bristleThickness")}
+          bristleLength={bristleLength}
+          bristleSpacing={bristleSpacing}
+          bristleThickness={bristleThickness}
+          bristlePositions={bristlePositions}
         />
 
         <button

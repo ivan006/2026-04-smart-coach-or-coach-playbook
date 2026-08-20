@@ -1,307 +1,290 @@
-interface Print3DPreviewProps {
-  stripLength: number;
-  stripWidth: number;
-  stripThickness: number;
-  bristleLength: number;
-  bristleSpacing: number;
-  bristleThickness: number;
-}
+import { useState } from "react";
+import Print3DPreview from "./Print3DPreview";
 
-function ViewBox({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-      <h3 className="mb-3 text-sm font-semibold text-gray-700">{title}</h3>
+const MAX_SIZE = 220;
+const STRIP_THICKNESS = 2;
 
-      <div className="flex min-h-64 items-center justify-center overflow-auto rounded-md bg-white p-8">
-        {children}
-      </div>
-    </div>
+type Values = {
+  stripLength: string;
+  stripWidth: string;
+  bristleLength: string;
+  bristleSpacing: string;
+  bristleThickness: string;
+};
+
+/*
+ * Shared bristle geometry.
+ *
+ * Each returned value is the X position of the
+ * LEFT edge of a physical bristle.
+ *
+ * A bristle occupies:
+ *
+ *   x -> x + bristleThickness
+ *
+ * Therefore the complete footprint must satisfy:
+ *
+ *   x + bristleThickness <= stripLength
+ */
+export function getBristlePositions(
+  stripLength: number,
+  bristleSpacing: number,
+  bristleThickness: number,
+): number[] {
+  const length = Math.max(stripLength, 0);
+  const spacing = Math.max(bristleSpacing, 0.1);
+  const thickness = Math.max(bristleThickness, 0.1);
+
+  if (length < thickness) {
+    return [];
+  }
+
+  const count = Math.floor((length - thickness) / spacing) + 1;
+
+  return Array.from(
+    { length: Math.min(count, 500) },
+    (_, index) => index * spacing,
   );
 }
 
-function Dimension({
+function NumberInput({
   label,
-  value,
+  name,
+  values,
+  update,
+  max,
 }: {
   label: string;
-  value: string | number;
+  name: keyof Values;
+  values: Values;
+  update: (name: keyof Values, value: string, max?: number) => void;
+  max?: number;
 }) {
   return (
-    <div className="rounded-lg bg-gray-50 p-3">
-      <div className="text-sm text-gray-500">{label}</div>
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium text-gray-900">
+        {label}
+      </span>
 
-      <div className="font-semibold text-gray-900">{value}</div>
-    </div>
+      <input
+        type="number"
+        value={values[name]}
+        min="0.1"
+        max={max}
+        step="0.1"
+        onChange={(e) => update(name, e.target.value, max)}
+        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400"
+      />
+    </label>
   );
 }
 
-export default function Print3DPreview({
-  stripLength,
-  stripWidth,
-  stripThickness,
-  bristleLength,
-  bristleSpacing,
-  bristleThickness,
-}: Print3DPreviewProps) {
-  /*
-   * ============================================
-   * AXIS RULES
-   * ============================================
-   *
-   * X = strip length
-   * Y = strip thickness / bristle direction
-   * Z = strip width
-   *
-   * TOP VIEW:
-   * Looking along Z
-   * Shows X × Y
-   *
-   * SIDE VIEW:
-   * Looking along X
-   * Shows Y × Z
-   */
-
-  const spacing = Math.max(bristleSpacing, 0.1);
-
-  const bristleCount = Math.min(Math.floor(stripLength / spacing) + 1, 500);
-
-  /*
-   * ============================================
-   * TOP VIEW — X × Y
-   * ============================================
-   *
-   * IMPORTANT:
-   *
-   * stripWidth is NOT used anywhere here.
-   *
-   * Therefore changing Z/width cannot change
-   * this view.
-   */
-
-  const topScale = 3;
-
-  const topLengthPx = Math.max(150, Math.min(700, stripLength * topScale));
-
-  const topThicknessPx = Math.max(1, stripThickness * topScale);
-
-  const topBristleLengthPx = Math.max(
-    30,
-    Math.min(400, bristleLength * topScale),
-  );
-
-  /*
-   * ============================================
-   * SIDE VIEW — Y × Z
-   * ============================================
-   *
-   * IMPORTANT:
-   *
-   * stripLength is NOT used to determine
-   * the physical dimensions of the base here.
-   *
-   * Width controls Z.
-   * Thickness controls Y.
-   */
-
-  const sideScale = 4;
-
-  const sideWidthPx = Math.max(30, Math.min(500, stripWidth * sideScale));
-
-  const sideThicknessPx = Math.max(1, stripThickness * sideScale);
-
-  const sideBristleLengthPx = Math.max(
-    30,
-    Math.min(400, bristleLength * sideScale),
-  );
-
-  /*
-   * ============================================
-   * TOP VIEW
-   * X × Y
-   * ============================================
-   */
-
-  const topBristles = Array.from({
-    length: bristleCount,
+export default function Print3D() {
+  const [values, setValues] = useState<Values>({
+    stripLength: "100",
+    stripWidth: "10",
+    bristleLength: "20",
+    bristleSpacing: "2",
+    bristleThickness: "0.4",
   });
 
+  function update(name: keyof Values, value: string, max?: number) {
+    if (value !== "" && max !== undefined && Number(value) > max) {
+      value = String(max);
+    }
+
+    setValues((current) => ({
+      ...current,
+      [name]: value,
+    }));
+  }
+
+  function number(name: keyof Values) {
+    return Number(values[name]) || 0;
+  }
+
+  const stripLength = Math.min(number("stripLength"), MAX_SIZE);
+
+  const stripWidth = Math.min(number("stripWidth"), MAX_SIZE);
+
+  const bristleLength = number("bristleLength");
+
+  const bristleSpacing = Math.max(number("bristleSpacing"), 0.1);
+
+  const bristleThickness = Math.max(number("bristleThickness"), 0.1);
+
   /*
-   * ============================================
-   * SIDE VIEW
-   * Y × Z
-   *
-   * Since we're looking along X, all the
-   * bristles positioned at different X
-   * positions overlap in this projection.
-   *
-   * We therefore show their projected
-   * envelope rather than pretending X
-   * changes the side-view geometry.
+   * ONE calculation used by both the preview
+   * and G-code generation.
    */
+  const bristlePositions = getBristlePositions(
+    stripLength,
+    bristleSpacing,
+    bristleThickness,
+  );
+
+  function generateGCode() {
+    const lines: string[] = [
+      "; 3D BRISTLE GENERATOR",
+      "",
+      `; X = strip length: ${stripLength} mm`,
+      `; Y = strip thickness: ${STRIP_THICKNESS} mm`,
+      `; Z = strip width: ${stripWidth} mm`,
+      `; Bristle length: ${bristleLength} mm`,
+      `; Bristle spacing: ${bristleSpacing} mm`,
+      `; Bristle thickness: ${bristleThickness} mm`,
+      `; Bristle count: ${bristlePositions.length}`,
+      "",
+      "G21",
+      "G90",
+      "M82",
+      "G28",
+      "",
+      "M104 S215",
+      "M109 S215",
+      "G92 E0",
+      "",
+      "; BASE STRIP",
+      "",
+      "G0 X0 Y0 Z0.2",
+      `G1 X${stripLength.toFixed(3)} E${(stripLength * 0.04).toFixed(4)}`,
+      "",
+      "; BRISTLES",
+      "",
+    ];
+
+    let e = stripLength * 0.08;
+
+    for (const x of bristlePositions) {
+      /*
+       * x is the LEFT edge of the bristle.
+       *
+       * Its physical X footprint is:
+       *
+       * x -> x + bristleThickness
+       *
+       * getBristlePositions() guarantees that the
+       * right edge never exceeds stripLength.
+       */
+
+      lines.push(`G0 X${x.toFixed(3)} Y${STRIP_THICKNESS.toFixed(3)} Z0`);
+
+      e += 0.08;
+      lines.push(`G1 E${e.toFixed(4)}`);
+
+      lines.push(
+        `G0 X${(x + bristleThickness).toFixed(3)} Y${(
+          STRIP_THICKNESS + bristleLength
+        ).toFixed(3)} Z0`,
+      );
+
+      e -= 0.05;
+      lines.push(`G1 E${e.toFixed(4)}`);
+    }
+
+    lines.push("", "M104 S0", "M140 S0", "G28 X0", "M84");
+
+    const blob = new Blob([lines.join("\n")], {
+      type: "text/plain",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "bristle-strip.gcode";
+    link.click();
+
+    URL.revokeObjectURL(url);
+  }
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Preview</h2>
+    <div className="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 lg:px-10">
+      <div className="mx-auto max-w-7xl space-y-8">
+        <header>
+          <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">
+            3D Printed Bristle Generator
+          </h1>
 
-        <p className="mt-1 text-sm text-gray-500">Top: X × Y · Side: Y × Z</p>
-      </div>
+          <p className="mt-2 text-sm text-gray-600">
+            Design a strip with sideways-extruded bristles.
+          </p>
+        </header>
 
-      <div className="grid grid-cols-1 gap-6">
-        {/* ========================================
-            TOP VIEW
-            X × Y
-        ======================================== */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+            <h2 className="mb-6 text-xl font-semibold text-gray-900">Strip</h2>
 
-        <ViewBox title="Top view — X × Y">
-          <div
-            className="relative shrink-0"
-            style={{
-              width: `${topLengthPx}px`,
-              height: `${topBristleLengthPx + topThicknessPx}px`,
-            }}
-          >
-            {/* BRISTLES
-                distributed along X
-                and extending in Y */}
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <NumberInput
+                label="Length (X) — mm"
+                name="stripLength"
+                values={values}
+                update={update}
+                max={MAX_SIZE}
+              />
 
-            {topBristles.map((_, index) => {
-              const x =
-                bristleCount <= 1
-                  ? 0
-                  : (index / (bristleCount - 1)) * topLengthPx;
-
-              return (
-                <div
-                  key={index}
-                  className="absolute bg-gray-900"
-                  style={{
-                    left: `${x}px`,
-                    bottom: `${topThicknessPx}px`,
-                    width: `${Math.max(1, bristleThickness * topScale)}px`,
-                    height: `${topBristleLengthPx}px`,
-                  }}
-                />
-              );
-            })}
-
-            {/* STRIP
-                X × fixed 2 mm Y */}
-
-            <div
-              className="absolute bottom-0 left-0 w-full rounded border-2 border-gray-700 bg-gray-400"
-              style={{
-                height: `${topThicknessPx}px`,
-              }}
-            />
-          </div>
-        </ViewBox>
-
-        {/* ========================================
-            SIDE VIEW
-            Y × Z
-        ======================================== */}
-
-        <ViewBox title="Side view — Y × Z">
-          <div
-            className="relative shrink-0"
-            style={{
-              width: `${sideThicknessPx + sideBristleLengthPx}px`,
-              height: `${sideWidthPx}px`,
-            }}
-          >
-            {/* ==================================
-                STRIP BASE
-
-                Y = 2 mm
-                Z = USER WIDTH
-
-                ONE rectangle.
-                ================================== */}
-
-            <div
-              className="absolute left-0 top-0 rounded border-2 border-gray-700 bg-gray-400"
-              style={{
-                width: `${sideThicknessPx}px`,
-                height: `${sideWidthPx}px`,
-              }}
-            />
-
-            {/* ==================================
-                BRISTLE PROJECTION
-
-                Starts at Y = 2 mm and extends
-                further in Y.
-
-                Because this view looks along X,
-                the individual X positions overlap.
-                ================================== */}
-
-            <div
-              className="absolute top-0"
-              style={{
-                left: `${sideThicknessPx}px`,
-                width: `${sideBristleLengthPx}px`,
-                height: `${sideWidthPx}px`,
-              }}
-            >
-              {/* Projected bristle field */}
-
-              {Array.from({
-                length: Math.max(
-                  1,
-                  Math.min(
-                    100,
-                    Math.floor(
-                      sideWidthPx / Math.max(bristleThickness * sideScale, 2),
-                    ),
-                  ),
-                ),
-              }).map((_, index, array) => {
-                const rowHeight = sideWidthPx / array.length;
-
-                return (
-                  <div
-                    key={index}
-                    className="absolute left-0 bg-gray-900"
-                    style={{
-                      top: `${index * rowHeight}px`,
-                      width: `${sideBristleLengthPx}px`,
-                      height: `${Math.max(
-                        1,
-                        Math.min(
-                          rowHeight * 0.35,
-                          bristleThickness * sideScale,
-                        ),
-                      )}px`,
-                    }}
-                  />
-                );
-              })}
+              <NumberInput
+                label="Width (Z) — mm"
+                name="stripWidth"
+                values={values}
+                update={update}
+                max={MAX_SIZE}
+              />
             </div>
-          </div>
-        </ViewBox>
+
+            <div className="mt-5 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
+              Fixed strip thickness (Y): <strong>{STRIP_THICKNESS} mm</strong>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+            <h2 className="mb-6 text-xl font-semibold text-gray-900">
+              Bristles
+            </h2>
+
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <NumberInput
+                label="Length (Y) — mm"
+                name="bristleLength"
+                values={values}
+                update={update}
+              />
+
+              <NumberInput
+                label="Spacing (X) — mm"
+                name="bristleSpacing"
+                values={values}
+                update={update}
+              />
+
+              <NumberInput
+                label="Thickness — mm"
+                name="bristleThickness"
+                values={values}
+                update={update}
+              />
+            </div>
+          </section>
+        </div>
+
+        <Print3DPreview
+          stripLength={stripLength}
+          stripWidth={stripWidth}
+          stripThickness={STRIP_THICKNESS}
+          bristleLength={bristleLength}
+          bristleSpacing={bristleSpacing}
+          bristleThickness={bristleThickness}
+          bristlePositions={bristlePositions}
+        />
+
+        <button
+          onClick={generateGCode}
+          className="w-full rounded-xl bg-black px-6 py-4 font-semibold text-white hover:bg-gray-800 sm:w-auto"
+        >
+          Generate G-code
+        </button>
       </div>
-
-      {/* DIMENSIONS */}
-
-      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-5">
-        <Dimension label="Length (X)" value={`${stripLength} mm`} />
-
-        <Dimension label="Width (Z)" value={`${stripWidth} mm`} />
-
-        <Dimension label="Thickness (Y)" value={`${stripThickness} mm`} />
-
-        <Dimension label="Bristle length (Y)" value={`${bristleLength} mm`} />
-
-        <Dimension label="Bristles" value={bristleCount} />
-      </div>
-    </section>
+    </div>
   );
 }
