@@ -4,6 +4,7 @@ const navItems = [
   { to: "/think", icon: "📹", label: "Think" },
   { to: "/predict", icon: "👾", label: "Predict" },
   { to: "/act", icon: "👨🏻‍🏫", label: "Act" },
+  { to: "/print", icon: "🖨️", label: "Print" },
 ];
 
 const AppSidebar = () => {

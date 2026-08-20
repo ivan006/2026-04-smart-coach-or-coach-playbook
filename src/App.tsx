@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppSidebar from "@/components/AppSidebar";
 import ThinkPage from "@/pages/ThinkPage/ThinkPage";
+import Print3D from "@/pages/Print3D/Print3D";
 import Predict2Page from "@/pages/Predict2Page/Predict2Page";
 import ActPage from "@/pages/ActPage/ActPage";
 import NotFound from "@/pages/NotFound";
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/think" element={<ThinkPage />} />
           <Route path="/predict" element={<Predict2Page />} />
           <Route path="/act" element={<ActPage />} />
+          <Route path="/print" element={<Print3D />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
