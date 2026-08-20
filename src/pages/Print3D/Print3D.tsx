@@ -104,7 +104,7 @@ export default function Print3D() {
       `G1 X${stripLength} E${(stripLength * 0.04).toFixed(4)}`,
       "",
       "; BRISTLES",
-      "; Bristles extend in Y",
+      "; Bristles extend sideways in Y",
       "",
     ];
 
@@ -133,8 +133,8 @@ export default function Print3D() {
     const blob = new Blob([lines.join("\n")], { type: "text/plain" });
 
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
 
+    const link = document.createElement("a");
     link.href = url;
     link.download = "bristle-strip.gcode";
     link.click();
