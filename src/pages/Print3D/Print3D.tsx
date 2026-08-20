@@ -4,6 +4,14 @@ import Print3DPreview from "./Print3DPreview";
 const MAX_SIZE = 220;
 const STRIP_THICKNESS = 2;
 
+type Values = {
+  stripLength: string;
+  stripWidth: string;
+  bristleLength: string;
+  bristleSpacing: string;
+  bristleThickness: string;
+};
+
 function NumberInput({
   label,
   name,
@@ -12,9 +20,9 @@ function NumberInput({
   max,
 }: {
   label: string;
-  name: string;
-  values: Record<string, string>;
-  update: (name: string, value: string, max?: number) => void;
+  name: keyof Values;
+  values: Values;
+  update: (name: keyof Values, value: string, max?: number) => void;
   max?: number;
 }) {
   return (
@@ -37,7 +45,7 @@ function NumberInput({
 }
 
 export default function Print3D() {
-  const [values, setValues] = useState({
+  const [values, setValues] = useState<Values>({
     stripLength: "100",
     stripWidth: "10",
     bristleLength: "20",
@@ -45,7 +53,7 @@ export default function Print3D() {
     bristleThickness: "0.4",
   });
 
-  function update(name: string, value: string, max?: number) {
+  function update(name: keyof Values, value: string, max?: number) {
     if (value !== "" && max !== undefined && Number(value) > max) {
       value = String(max);
     }
@@ -56,7 +64,7 @@ export default function Print3D() {
     }));
   }
 
-  function number(name: string) {
+  function number(name: keyof Values) {
     return Number(values[name]) || 0;
   }
 
@@ -71,7 +79,7 @@ export default function Print3D() {
 
     const bristleThickness = Math.max(number("bristleThickness"), 0.1);
 
-    const lines = [
+    const lines: string[] = [
       "; 3D BRISTLE GENERATOR",
       "",
       `; X = strip length: ${stripLength} mm`,
@@ -96,6 +104,7 @@ export default function Print3D() {
       `G1 X${stripLength} E${(stripLength * 0.04).toFixed(4)}`,
       "",
       "; BRISTLES",
+      "; Bristles extend in Y",
       "",
     ];
 
@@ -124,8 +133,8 @@ export default function Print3D() {
     const blob = new Blob([lines.join("\n")], { type: "text/plain" });
 
     const url = URL.createObjectURL(blob);
-
     const link = document.createElement("a");
+
     link.href = url;
     link.download = "bristle-strip.gcode";
     link.click();
@@ -170,7 +179,7 @@ export default function Print3D() {
               />
             </div>
 
-            <div className="mt-5 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
+            <div className="mt-5 rounded-lg bg-gray-50 p-3 text-sm text-gray-600 space-y-1">
               <div>
                 Maximum length: <strong>{MAX_SIZE} mm</strong>
               </div>
