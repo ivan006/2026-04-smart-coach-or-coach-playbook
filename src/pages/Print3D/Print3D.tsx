@@ -2,32 +2,18 @@ import { useState } from "react";
 import Print3DPreview from "./Print3DPreview";
 
 const MAX_SIZE = 220;
-const STRIP_THICKNESS = 2;
 const MAX_BRISTLES = 500;
 
-export type Values = {
+type Values = {
   stripLength: string;
   stripWidth: string;
+  stripThickness: string;
   bristleLength: string;
   bristleSpacing: string;
   bristleThickness: string;
 };
 
-/*
- * Calculates the actual physical X positions of bristles.
- *
- * Each bristle occupies:
- *
- *   x -> x + bristleThickness
- *
- * A bristle is valid only when its COMPLETE
- * physical footprint fits inside the strip:
- *
- *   x + bristleThickness <= stripLength
- *
- * bristleSpacing is the distance between bristle starts.
- */
-export function getBristlePositions(
+function getBristlePositions(
   stripLength: number,
   bristleSpacing: number,
   bristleThickness: number,
@@ -89,6 +75,7 @@ export default function Print3D() {
   const [values, setValues] = useState<Values>({
     stripLength: "100",
     stripWidth: "10",
+    stripThickness: "2",
     bristleLength: "20",
     bristleSpacing: "2",
     bristleThickness: "0.4",
@@ -113,6 +100,8 @@ export default function Print3D() {
 
   const stripWidth = Math.min(number("stripWidth"), MAX_SIZE);
 
+  const stripThickness = Math.max(number("stripThickness"), 0.1);
+
   const bristleLength = number("bristleLength");
 
   const bristleSpacing = Math.max(number("bristleSpacing"), 0.1);
@@ -120,7 +109,7 @@ export default function Print3D() {
   const bristleThickness = Math.max(number("bristleThickness"), 0.1);
 
   /*
-   * SINGLE SOURCE OF TRUTH FOR ACTUAL X PLACEMENT.
+   * Single source of truth for physical X placement.
    */
   const bristlePositions = getBristlePositions(
     stripLength,
@@ -133,7 +122,7 @@ export default function Print3D() {
       "; 3D BRISTLE GENERATOR",
       "",
       `; X = strip length: ${stripLength} mm`,
-      `; Y = strip thickness: ${STRIP_THICKNESS} mm`,
+      `; Y = strip thickness: ${stripThickness} mm`,
       `; Z = strip width: ${stripWidth} mm`,
       `; Bristle length: ${bristleLength} mm`,
       `; Bristle spacing: ${bristleSpacing} mm`,
@@ -162,17 +151,15 @@ export default function Print3D() {
 
     for (const x of bristlePositions) {
       /*
-       * x = left edge of bristle.
+       * Bristle footprint:
        *
-       * Complete X footprint:
+       * X = x -> x + bristleThickness
        *
-       * x -> x + bristleThickness
-       *
-       * getBristlePositions() guarantees this
-       * never extends beyond stripLength.
+       * getBristlePositions() guarantees the
+       * complete footprint fits inside the strip.
        */
 
-      lines.push(`G0 X${x.toFixed(3)} Y${STRIP_THICKNESS.toFixed(3)} Z0`);
+      lines.push(`G0 X${x.toFixed(3)} Y${stripThickness.toFixed(3)} Z0`);
 
       e += 0.08;
 
@@ -180,7 +167,7 @@ export default function Print3D() {
 
       lines.push(
         `G0 X${(x + bristleThickness).toFixed(3)} Y${(
-          STRIP_THICKNESS + bristleLength
+          stripThickness + bristleLength
         ).toFixed(3)} Z0`,
       );
 
@@ -241,10 +228,13 @@ export default function Print3D() {
                 update={update}
                 max={MAX_SIZE}
               />
-            </div>
 
-            <div className="mt-5 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
-              Fixed strip thickness (Y): <strong>{STRIP_THICKNESS} mm</strong>
+              <NumberInput
+                label="Thickness (Y) — mm"
+                name="stripThickness"
+                values={values}
+                update={update}
+              />
             </div>
           </section>
 
@@ -281,7 +271,7 @@ export default function Print3D() {
         <Print3DPreview
           stripLength={stripLength}
           stripWidth={stripWidth}
-          stripThickness={STRIP_THICKNESS}
+          stripThickness={stripThickness}
           bristleLength={bristleLength}
           bristleSpacing={bristleSpacing}
           bristleThickness={bristleThickness}

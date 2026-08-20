@@ -52,27 +52,23 @@ export default function Print3DPreview({
   bristlePositions,
 }: Print3DPreviewProps) {
   /*
-   * ============================================
-   * AXIS RULES
-   * ============================================
+   * AXES
    *
    * X = strip length
    * Y = strip thickness / bristle direction
    * Z = strip width
    *
-   * TOP VIEW:
+   * TOP:
    * X × Y
    *
-   * SIDE VIEW:
+   * SIDE:
    * Y × Z
    */
 
   const bristleCount = bristlePositions.length;
 
   /*
-   * ============================================
    * TOP VIEW
-   * ============================================
    */
 
   const topScale = 3;
@@ -87,20 +83,7 @@ export default function Print3DPreview({
   );
 
   /*
-   * ============================================
    * SIDE VIEW
-   * ============================================
-   *
-   * The side view is a representative
-   * cross-section.
-   *
-   * Calculate the number of visible bristles
-   * from:
-   *
-   * strip width /
-   * (bristle thickness + bristle spacing)
-   *
-   * This makes spacing visible in the side view.
    */
 
   const sideScale = 4;
@@ -114,10 +97,25 @@ export default function Print3DPreview({
     Math.min(400, bristleLength * sideScale),
   );
 
+  /*
+   * SIDE-VIEW BRISTLE COUNT
+   *
+   * Representative Z spacing:
+   *
+   * bristle thickness + bristle spacing
+   *
+   * Therefore:
+   *
+   * floor(
+   *   stripWidth /
+   *   (bristleThickness + bristleSpacing)
+   * )
+   */
+
+  const sideBristlePitch = bristleThickness + bristleSpacing;
+
   const sideBristleCount =
-    bristleThickness + bristleSpacing > 0
-      ? Math.floor(stripWidth / (bristleThickness + bristleSpacing))
-      : 0;
+    sideBristlePitch > 0 ? Math.floor(stripWidth / sideBristlePitch) : 0;
 
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
@@ -128,10 +126,7 @@ export default function Print3DPreview({
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        {/* ========================================
-            TOP VIEW
-            X × Y
-        ======================================== */}
+        {/* TOP VIEW */}
 
         <ViewBox title="Top view — X × Y">
           <div
@@ -154,6 +149,8 @@ export default function Print3DPreview({
               />
             ))}
 
+            {/* STRIP BASE */}
+
             <div
               className="absolute bottom-0 left-0 w-full rounded border-2 border-gray-700 bg-gray-400"
               style={{
@@ -163,10 +160,7 @@ export default function Print3DPreview({
           </div>
         </ViewBox>
 
-        {/* ========================================
-            SIDE VIEW
-            Y × Z
-        ======================================== */}
+        {/* SIDE VIEW */}
 
         <ViewBox title="Side view — Y × Z">
           <div
@@ -186,7 +180,7 @@ export default function Print3DPreview({
               }}
             />
 
-            {/* BRISTLE FIELD */}
+            {/* BRISTLES */}
 
             <div
               className="absolute top-0"
@@ -199,18 +193,14 @@ export default function Print3DPreview({
               {Array.from({
                 length: sideBristleCount,
               }).map((_, index) => {
-                const cellSize = bristleThickness + bristleSpacing;
-
-                const z = index * cellSize;
-
-                const zPx = z * sideScale;
+                const z = index * sideBristlePitch;
 
                 return (
                   <div
                     key={index}
                     className="absolute left-0 bg-gray-900"
                     style={{
-                      top: `${zPx}px`,
+                      top: `${z * sideScale}px`,
                       width: `${sideBristleLengthPx}px`,
                       height: `${Math.max(1, bristleThickness * sideScale)}px`,
                     }}
@@ -224,7 +214,7 @@ export default function Print3DPreview({
 
       {/* DIMENSIONS */}
 
-      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-5">
+      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-6">
         <Dimension label="Length (X)" value={`${stripLength} mm`} />
 
         <Dimension label="Width (Z)" value={`${stripWidth} mm`} />
@@ -232,6 +222,8 @@ export default function Print3DPreview({
         <Dimension label="Thickness (Y)" value={`${stripThickness} mm`} />
 
         <Dimension label="Bristle length (Y)" value={`${bristleLength} mm`} />
+
+        <Dimension label="Bristle thickness" value={`${bristleThickness} mm`} />
 
         <Dimension label="Bristles" value={bristleCount} />
       </div>
