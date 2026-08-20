@@ -73,7 +73,8 @@ export default function Print3DPreview({
 
   /*
    * ============================================
-   * TOP VIEW — X × Y
+   * TOP VIEW
+   * X × Y
    * ============================================
    */
 
@@ -90,7 +91,8 @@ export default function Print3DPreview({
 
   /*
    * ============================================
-   * SIDE VIEW — Y × Z
+   * SIDE VIEW
+   * Y × Z
    * ============================================
    */
 
@@ -104,6 +106,40 @@ export default function Print3DPreview({
     30,
     Math.min(400, bristleLength * sideScale),
   );
+
+  /*
+   * The side view looks along X.
+   *
+   * Therefore all bristles overlap in this
+   * projection.
+   *
+   * Their X spacing does NOT create Z spacing.
+   *
+   * Instead, the actual X positions determine
+   * how much of the projected bristle field
+   * exists across the X direction.
+   *
+   * We calculate the occupied X envelope from
+   * the same physical positions used above.
+   */
+
+  const projectedBristleCoverage =
+    bristlePositions.length > 0
+      ? Math.min(
+          stripLength,
+          bristlePositions[bristlePositions.length - 1] + bristleThickness,
+        )
+      : 0;
+
+  /*
+   * Fraction of the X strip occupied by actual
+   * bristle footprints.
+   *
+   * This lets the side-view projection reflect
+   * spacing rather than inventing Z rows.
+   */
+  const bristleCoverageRatio =
+    stripLength > 0 ? projectedBristleCoverage / stripLength : 0;
 
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
@@ -132,12 +168,6 @@ export default function Print3DPreview({
                 key={index}
                 className="absolute bg-gray-900"
                 style={{
-                  /*
-                   * x is the REAL physical X position.
-                   *
-                   * The bristle's full width is rendered,
-                   * not merely its centre/start point.
-                   */
                   left: `${x * topScale}px`,
                   bottom: `${topThicknessPx}px`,
                   width: `${Math.max(1, bristleThickness * topScale)}px`,
@@ -168,6 +198,8 @@ export default function Print3DPreview({
               height: `${sideWidthPx}px`,
             }}
           >
+            {/* BASE */}
+
             <div
               className="absolute left-0 top-0 rounded border-2 border-gray-700 bg-gray-400"
               style={{
@@ -175,6 +207,8 @@ export default function Print3DPreview({
                 height: `${sideWidthPx}px`,
               }}
             />
+
+            {/* BRISTLE PROJECTION */}
 
             <div
               className="absolute top-0"
@@ -184,41 +218,24 @@ export default function Print3DPreview({
                 height: `${sideWidthPx}px`,
               }}
             >
-              {Array.from({
-                length: Math.max(
-                  1,
-                  Math.min(
-                    100,
-                    Math.floor(
-                      sideWidthPx / Math.max(bristleThickness * sideScale, 2),
-                    ),
-                  ),
-                ),
-              }).map((_, index, array) => {
-                const rowHeight = sideWidthPx / array.length;
-
-                return (
-                  <div
-                    key={index}
-                    className="absolute left-0 bg-gray-900"
-                    style={{
-                      top: `${index * rowHeight}px`,
-                      width: `${sideBristleLengthPx}px`,
-                      height: `${Math.max(
-                        1,
-                        Math.min(
-                          rowHeight * 0.35,
-                          bristleThickness * sideScale,
-                        ),
-                      )}px`,
-                    }}
-                  />
-                );
-              })}
+              {bristlePositions.length > 0 && (
+                <div
+                  className="absolute left-0 top-0 bg-gray-900"
+                  style={{
+                    width: `${sideBristleLengthPx}px`,
+                    height: `${Math.max(
+                      1,
+                      sideWidthPx * bristleCoverageRatio,
+                    )}px`,
+                  }}
+                />
+              )}
             </div>
           </div>
         </ViewBox>
       </div>
+
+      {/* DIMENSIONS */}
 
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-5">
         <Dimension label="Length (X)" value={`${stripLength} mm`} />
