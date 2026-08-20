@@ -46,7 +46,7 @@ export default function Print3D() {
   });
 
   function update(name: string, value: string, max?: number) {
-    if (value !== "" && max && Number(value) > max) {
+    if (value !== "" && max !== undefined && Number(value) > max) {
       value = String(max);
     }
 
@@ -74,16 +74,16 @@ export default function Print3D() {
     const lines = [
       "; 3D BRISTLE GENERATOR",
       "",
-      `; X Strip Length: ${stripLength} mm`,
-      `; Z Strip Width: ${stripWidth} mm`,
-      `; Y Strip Thickness: ${STRIP_THICKNESS} mm`,
-      `; Bristle Length: ${bristleLength} mm`,
-      `; Bristle Spacing: ${bristleSpacing} mm`,
-      `; Bristle Thickness: ${bristleThickness} mm`,
+      `; X = strip length: ${stripLength} mm`,
+      `; Y = strip thickness: ${STRIP_THICKNESS} mm`,
+      `; Z = strip width: ${stripWidth} mm`,
+      `; Bristle length: ${bristleLength} mm`,
+      `; Bristle spacing: ${bristleSpacing} mm`,
+      `; Bristle thickness: ${bristleThickness} mm`,
       "",
-      "G21 ; millimetres",
-      "G90 ; absolute positioning",
-      "M82 ; absolute extrusion",
+      "G21",
+      "G90",
+      "M82",
       "G28",
       "",
       "M104 S215",
@@ -91,29 +91,17 @@ export default function Print3D() {
       "G92 E0",
       "",
       "; BASE STRIP",
-      "; X = length",
-      "; Y = thickness",
-      "; Z = width",
       "",
       "G0 X0 Y0 Z0.2",
       `G1 X${stripLength} E${(stripLength * 0.04).toFixed(4)}`,
       "",
       "; BRISTLES",
-      "; Bristles project in Y",
       "",
     ];
 
     let e = stripLength * 0.08;
 
     for (let x = 0; x <= stripLength; x += bristleSpacing) {
-      /*
-       * Start on the side of the strip.
-       *
-       * The strip occupies Y = 0 → 2 mm.
-       * Bristles begin at Y = 2 mm and
-       * extend outward in Y.
-       */
-
       lines.push(`G0 X${x.toFixed(3)} Y${STRIP_THICKNESS} Z0`);
 
       e += 0.08;

@@ -54,61 +54,59 @@ export default function Print3DPreview({
   const bristleCount = Math.min(Math.floor(stripLength / safeSpacing) + 1, 500);
 
   /*
-   * ============================
+   * ==========================================
    * TOP VIEW
-   * ============================
+   * ==========================================
    *
-   * Looking DOWN the Z axis.
+   * Looking down Z.
    *
-   * X = horizontal
-   * Y = vertical
+   * X = length
+   * Y = thickness
    *
-   * Therefore this view shows:
-   *
-   *       X = LENGTH
-   *
-   *   ┌──────────────────────┐
-   *   │                      │
-   *   └──────────────────────┘
-   *
-   *          Y = 2 mm
-   *
-   * Bristles extend in Y.
+   * Bristles extend along Y.
    */
 
   const topWidth = Math.min(650, Math.max(150, stripLength * 3));
 
-  const topStripHeight = Math.max(8, stripThickness * 8);
+  const topStripDepth = Math.max(8, stripThickness * 8);
 
-  const topBristleHeight = Math.max(20, Math.min(180, bristleLength * 3));
+  const topBristleLength = Math.max(25, Math.min(180, bristleLength * 3));
 
   /*
-   * ============================
+   * ==========================================
    * SIDE VIEW
-   * ============================
+   * ==========================================
    *
-   * Looking along Y.
+   * Looking along Z.
    *
-   * X = horizontal
-   * Z = vertical
+   * X = length
+   * Z = width
    *
-   * Therefore this view shows:
+   * Y is depth.
    *
-   *       X = LENGTH
+   * We therefore draw a pseudo-3D extrusion:
    *
-   *   ┌──────────────────────┐
-   *   │                      │
-   *   │       Z = WIDTH      │
-   *   │                      │
-   *   └──────────────────────┘
+   *                 BRISTLES
+   *              ────────────
+   *             /
+   *            /
+   *   ┌───────────────────────┐
+   *   │                       │
+   *   │                       │
+   *   └───────────────────────┘
+   *       ↗ 2 mm Y depth
    *
-   * Bristles aren't visible here
-   * because they project along Y.
    */
 
   const sideWidth = Math.min(650, Math.max(150, stripLength * 3));
 
-  const sideHeight = Math.min(400, Math.max(30, stripWidth * 3));
+  const sideHeight = Math.min(350, Math.max(40, stripWidth * 3));
+
+  // Exaggerated visually so 2 mm is actually visible.
+  const depthPx = 24;
+
+  // Bristle projection is also exaggerated.
+  const bristleProjectionPx = Math.max(30, Math.min(180, bristleLength * 3));
 
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
@@ -116,19 +114,21 @@ export default function Print3DPreview({
         <h2 className="text-xl font-semibold text-gray-900">Preview</h2>
 
         <p className="mt-1 text-sm text-gray-500">
-          X = length · Y = thickness / bristle direction · Z = width
+          X = length · Y = thickness/bristle direction · Z = width
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        {/* ================= TOP VIEW ================= */}
+        {/* ======================================
+            TOP VIEW
+        ====================================== */}
 
         <ViewBox title="Top view — X × Y">
           <div
             className="relative shrink-0"
             style={{
               width: `${topWidth}px`,
-              paddingTop: `${topBristleHeight}px`,
+              paddingTop: `${topBristleLength}px`,
             }}
           >
             {/* BRISTLES */}
@@ -136,7 +136,7 @@ export default function Print3DPreview({
             <div
               className="absolute left-0 top-0 flex w-full justify-between"
               style={{
-                height: `${topBristleHeight}px`,
+                height: `${topBristleLength}px`,
               }}
             >
               {Array.from({
@@ -153,27 +153,102 @@ export default function Print3DPreview({
               ))}
             </div>
 
-            {/* STRIP */}
+            {/* 2 MM STRIP THICKNESS */}
 
             <div
-              className="w-full rounded bg-gray-700"
+              className="w-full rounded border-2 border-gray-700 bg-gray-400"
               style={{
-                height: `${topStripHeight}px`,
+                height: `${topStripDepth}px`,
               }}
             />
           </div>
         </ViewBox>
 
-        {/* ================= SIDE VIEW ================= */}
+        {/* ======================================
+            SIDE VIEW
+        ====================================== */}
 
-        <ViewBox title="Side view — X × Z">
+        <ViewBox title="Side view — X × Z with Y depth">
           <div
-            className="relative shrink-0 rounded border-2 border-gray-700 bg-gray-300"
+            className="relative shrink-0"
             style={{
-              width: `${sideWidth}px`,
-              height: `${sideHeight}px`,
+              width: `${sideWidth + depthPx}px`,
+              height: `${sideHeight + depthPx + bristleProjectionPx}px`,
             }}
-          />
+          >
+            {/* BRISTLES */}
+
+            <div
+              className="absolute"
+              style={{
+                left: 0,
+                top: 0,
+                width: `${sideWidth}px`,
+                height: `${bristleProjectionPx}px`,
+              }}
+            >
+              {Array.from({
+                length: bristleCount,
+              }).map((_, index) => {
+                const x =
+                  bristleCount <= 1
+                    ? 0
+                    : (index / (bristleCount - 1)) * sideWidth;
+
+                return (
+                  <div
+                    key={index}
+                    className="absolute bg-gray-900"
+                    style={{
+                      left: `${x}px`,
+                      top: 0,
+                      width: `${Math.max(1, bristleThickness)}px`,
+                      height: `${bristleProjectionPx}px`,
+                    }}
+                  />
+                );
+              })}
+            </div>
+
+            {/* FRONT FACE */}
+
+            <div
+              className="absolute border-2 border-gray-700 bg-gray-400"
+              style={{
+                left: 0,
+                top: `${bristleProjectionPx}px`,
+                width: `${sideWidth}px`,
+                height: `${sideHeight}px`,
+              }}
+            />
+
+            {/* TOP / DEPTH FACE */}
+
+            <div
+              className="absolute border-2 border-gray-700 bg-gray-300"
+              style={{
+                left: `${depthPx}px`,
+                top: `${bristleProjectionPx - depthPx}px`,
+                width: `${sideWidth}px`,
+                height: `${sideHeight}px`,
+                transform: "skewY(-20deg)",
+                transformOrigin: "bottom left",
+                pointerEvents: "none",
+              }}
+            />
+
+            {/* DEPTH INDICATOR */}
+
+            <div
+              className="absolute text-xs font-semibold text-gray-500"
+              style={{
+                left: `${sideWidth + 5}px`,
+                top: `${bristleProjectionPx + sideHeight / 2}px`,
+              }}
+            >
+              2 mm Y
+            </div>
+          </div>
         </ViewBox>
       </div>
 
