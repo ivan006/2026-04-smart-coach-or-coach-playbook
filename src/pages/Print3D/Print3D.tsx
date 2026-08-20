@@ -104,7 +104,6 @@ export default function Print3D() {
       `G1 X${stripLength} E${(stripLength * 0.04).toFixed(4)}`,
       "",
       "; BRISTLES",
-      "; Bristles extend sideways in Y",
       "",
     ];
 
@@ -114,7 +113,6 @@ export default function Print3D() {
       lines.push(`G0 X${x.toFixed(3)} Y${STRIP_THICKNESS} Z0`);
 
       e += 0.08;
-
       lines.push(`G1 E${e.toFixed(4)}`);
 
       lines.push(
@@ -124,7 +122,6 @@ export default function Print3D() {
       );
 
       e -= 0.05;
-
       lines.push(`G1 E${e.toFixed(4)}`);
     }
 
@@ -133,8 +130,8 @@ export default function Print3D() {
     const blob = new Blob([lines.join("\n")], { type: "text/plain" });
 
     const url = URL.createObjectURL(blob);
-
     const link = document.createElement("a");
+
     link.href = url;
     link.download = "bristle-strip.gcode";
     link.click();
@@ -156,8 +153,6 @@ export default function Print3D() {
         </header>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* STRIP */}
-
           <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 className="mb-6 text-xl font-semibold text-gray-900">Strip</h2>
 
@@ -171,7 +166,7 @@ export default function Print3D() {
               />
 
               <NumberInput
-                label="Width / Height (Z) — mm"
+                label="Width (Z) — mm"
                 name="stripWidth"
                 values={values}
                 update={update}
@@ -179,22 +174,10 @@ export default function Print3D() {
               />
             </div>
 
-            <div className="mt-5 rounded-lg bg-gray-50 p-3 text-sm text-gray-600 space-y-1">
-              <div>
-                Maximum length: <strong>{MAX_SIZE} mm</strong>
-              </div>
-
-              <div>
-                Maximum width: <strong>{MAX_SIZE} mm</strong>
-              </div>
-
-              <div>
-                Fixed thickness (Y): <strong>{STRIP_THICKNESS} mm</strong>
-              </div>
+            <div className="mt-5 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
+              Fixed strip thickness (Y): <strong>{STRIP_THICKNESS} mm</strong>
             </div>
           </section>
-
-          {/* BRISTLES */}
 
           <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 className="mb-6 text-xl font-semibold text-gray-900">
@@ -237,7 +220,7 @@ export default function Print3D() {
 
         <button
           onClick={generateGCode}
-          className="w-full rounded-xl bg-black px-6 py-4 font-semibold text-white transition hover:bg-gray-800 sm:w-auto"
+          className="w-full rounded-xl bg-black px-6 py-4 font-semibold text-white hover:bg-gray-800 sm:w-auto"
         >
           Generate G-code
         </button>

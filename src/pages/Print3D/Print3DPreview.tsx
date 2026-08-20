@@ -49,169 +49,237 @@ export default function Print3DPreview({
   bristleSpacing,
   bristleThickness,
 }: Print3DPreviewProps) {
+  /*
+   * ============================================
+   * AXIS RULES
+   * ============================================
+   *
+   * X = strip length
+   * Y = strip thickness / bristle direction
+   * Z = strip width
+   *
+   * TOP VIEW:
+   * Looking along Z
+   * Shows X × Y
+   *
+   * SIDE VIEW:
+   * Looking along X
+   * Shows Y × Z
+   */
+
   const spacing = Math.max(bristleSpacing, 0.1);
 
   const bristleCount = Math.min(Math.floor(stripLength / spacing) + 1, 500);
 
   /*
-   * ==========================================
-   * TOP VIEW — X × Z
-   * ==========================================
+   * ============================================
+   * TOP VIEW — X × Y
+   * ============================================
    *
-   * Looking DOWN along Y.
+   * IMPORTANT:
    *
-   * X = strip length
-   * Z = strip width
+   * stripWidth is NOT used anywhere here.
    *
-   * The strip therefore appears as:
-   *
-   *   ┌─────────────────────────────┐
-   *   │                             │
-   *   │                             │
-   *   │           STRIP             │
-   *   │                             │
-   *   └─────────────────────────────┘
-   *
-   * Bristles are travelling in Y, so
-   * they are NOT visible in this view.
+   * Therefore changing Z/width cannot change
+   * this view.
    */
 
-  const topWidth = Math.min(700, Math.max(180, stripLength * 3));
+  const topScale = 3;
 
-  const topHeight = Math.max(30, Math.min(400, stripWidth * 3));
+  const topLengthPx = Math.max(150, Math.min(700, stripLength * topScale));
+
+  const topThicknessPx = Math.max(1, stripThickness * topScale);
+
+  const topBristleLengthPx = Math.max(
+    30,
+    Math.min(400, bristleLength * topScale),
+  );
 
   /*
-   * ==========================================
+   * ============================================
    * SIDE VIEW — Y × Z
-   * ==========================================
+   * ============================================
    *
-   * Looking along X.
+   * IMPORTANT:
    *
-   * Y = horizontal
-   * Z = vertical
+   * stripLength is NOT used to determine
+   * the physical dimensions of the base here.
    *
-   * This is the view you were describing:
-   *
-   *                BRISTLES
-   *             ────────────────→
-   *
-   *       ┌───┬─────────────────
-   *       │   │
-   *       │   │
-   *       │   │
-   *       └───┴─────────────────
-   *
-   *       ↑
-   *      2 mm
-   *
-   * The BASE is exactly:
-   *
-   *       Z = user-defined width
-   *       Y = fixed 2 mm
-   *
-   * Bristles extend from its Y-facing side.
-   *
-   * X / strip length is NOT shown here.
+   * Width controls Z.
+   * Thickness controls Y.
    */
 
-  const sideScale = 3;
+  const sideScale = 4;
 
-  const sideBaseHeight = Math.max(30, Math.min(500, stripWidth * sideScale));
+  const sideWidthPx = Math.max(30, Math.min(500, stripWidth * sideScale));
 
-  const sideBaseThickness = Math.max(1, stripThickness * sideScale);
+  const sideThicknessPx = Math.max(1, stripThickness * sideScale);
 
-  const sideBristleLength = Math.max(
+  const sideBristleLengthPx = Math.max(
     30,
     Math.min(400, bristleLength * sideScale),
   );
+
+  /*
+   * ============================================
+   * TOP VIEW
+   * X × Y
+   * ============================================
+   */
+
+  const topBristles = Array.from({
+    length: bristleCount,
+  });
+
+  /*
+   * ============================================
+   * SIDE VIEW
+   * Y × Z
+   *
+   * Since we're looking along X, all the
+   * bristles positioned at different X
+   * positions overlap in this projection.
+   *
+   * We therefore show their projected
+   * envelope rather than pretending X
+   * changes the side-view geometry.
+   */
 
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Preview</h2>
 
-        <p className="mt-1 text-sm text-gray-500">
-          X = length · Y = thickness / bristle direction · Z = width
-        </p>
+        <p className="mt-1 text-sm text-gray-500">Top: X × Y · Side: Y × Z</p>
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        {/* ======================================
+        {/* ========================================
             TOP VIEW
-        ====================================== */}
+            X × Y
+        ======================================== */}
 
-        <ViewBox title="Top view — X × Z">
+        <ViewBox title="Top view — X × Y">
           <div
-            className="relative shrink-0 rounded border-2 border-gray-700 bg-gray-400"
+            className="relative shrink-0"
             style={{
-              width: `${topWidth}px`,
-              height: `${topHeight}px`,
+              width: `${topLengthPx}px`,
+              height: `${topBristleLengthPx + topThicknessPx}px`,
             }}
-          />
+          >
+            {/* BRISTLES
+                distributed along X
+                and extending in Y */}
+
+            {topBristles.map((_, index) => {
+              const x =
+                bristleCount <= 1
+                  ? 0
+                  : (index / (bristleCount - 1)) * topLengthPx;
+
+              return (
+                <div
+                  key={index}
+                  className="absolute bg-gray-900"
+                  style={{
+                    left: `${x}px`,
+                    bottom: `${topThicknessPx}px`,
+                    width: `${Math.max(1, bristleThickness * topScale)}px`,
+                    height: `${topBristleLengthPx}px`,
+                  }}
+                />
+              );
+            })}
+
+            {/* STRIP
+                X × fixed 2 mm Y */}
+
+            <div
+              className="absolute bottom-0 left-0 w-full rounded border-2 border-gray-700 bg-gray-400"
+              style={{
+                height: `${topThicknessPx}px`,
+              }}
+            />
+          </div>
         </ViewBox>
 
-        {/* ======================================
+        {/* ========================================
             SIDE VIEW
-        ====================================== */}
+            Y × Z
+        ======================================== */}
 
         <ViewBox title="Side view — Y × Z">
           <div
             className="relative shrink-0"
             style={{
-              width: `${sideBaseThickness + sideBristleLength}px`,
-              height: `${sideBaseHeight}px`,
+              width: `${sideThicknessPx + sideBristleLengthPx}px`,
+              height: `${sideWidthPx}px`,
             }}
           >
             {/* ==================================
                 STRIP BASE
 
-                Y = EXACTLY 2 mm
-                Z = USER-DEFINED WIDTH
+                Y = 2 mm
+                Z = USER WIDTH
 
-                This is ONE rectangle.
+                ONE rectangle.
                 ================================== */}
 
             <div
               className="absolute left-0 top-0 rounded border-2 border-gray-700 bg-gray-400"
               style={{
-                width: `${sideBaseThickness}px`,
-                height: `${sideBaseHeight}px`,
+                width: `${sideThicknessPx}px`,
+                height: `${sideWidthPx}px`,
               }}
             />
 
             {/* ==================================
-                BRISTLES
+                BRISTLE PROJECTION
 
-                They start at the OUTER Y FACE
-                of the 2 mm strip and travel
-                horizontally in Y.
+                Starts at Y = 2 mm and extends
+                further in Y.
+
+                Because this view looks along X,
+                the individual X positions overlap.
                 ================================== */}
 
             <div
               className="absolute top-0"
               style={{
-                left: `${sideBaseThickness}px`,
-                width: `${sideBristleLength}px`,
-                height: `${sideBaseHeight}px`,
+                left: `${sideThicknessPx}px`,
+                width: `${sideBristleLengthPx}px`,
+                height: `${sideWidthPx}px`,
               }}
             >
+              {/* Projected bristle field */}
+
               {Array.from({
-                length: bristleCount,
-              }).map((_, index) => {
-                const z =
-                  bristleCount <= 1
-                    ? sideBaseHeight / 2
-                    : (index / (bristleCount - 1)) * sideBaseHeight;
+                length: Math.max(
+                  1,
+                  Math.min(
+                    100,
+                    Math.floor(
+                      sideWidthPx / Math.max(bristleThickness * sideScale, 2),
+                    ),
+                  ),
+                ),
+              }).map((_, index, array) => {
+                const rowHeight = sideWidthPx / array.length;
 
                 return (
                   <div
                     key={index}
-                    className="absolute bg-gray-900"
+                    className="absolute left-0 bg-gray-900"
                     style={{
-                      left: 0,
-                      top: `${z}px`,
-                      width: `${sideBristleLength}px`,
-                      height: `${Math.max(1, bristleThickness * sideScale)}px`,
+                      top: `${index * rowHeight}px`,
+                      width: `${sideBristleLengthPx}px`,
+                      height: `${Math.max(
+                        1,
+                        Math.min(
+                          rowHeight * 0.35,
+                          bristleThickness * sideScale,
+                        ),
+                      )}px`,
                     }}
                   />
                 );
